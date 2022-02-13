@@ -48,8 +48,7 @@ async def whitelist(ctx, *, mess):
 
                 # Command Execution Via Commandline through Docker
                 dockerName = channel.get('docker_name')
-                os.system(f'cmd /k "docker exec {dockerName} rcon-cli /whitelist add {mess}"')
-                print(f"{mess} has been whitelisted in {dockerName}.")
+                os.system(f'docker exec {dockerName} rcon-cli /whitelist add {mess}')
 
     await ctx.send(mess + " has been whitelisted.") #sends finalmsg to the discord channel
 
