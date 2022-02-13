@@ -2,7 +2,7 @@
 #   By: Emmett Peck
 #
 #   A simple discord bot to allow remote whitelisting through discord.
-#
+#   To be run on linux server alongside dockerized servers.
 
 import os
 import discord
@@ -11,7 +11,14 @@ from dotenv import load_dotenv
 
 load_dotenv()
 bot = commands.Bot(command_prefix='/', help_command=None) # Set Prefix
-role_Whitelist = {'Member', 'Moderator'}
+
+
+role_Whitelist = {'Member', 'Moderator'} #Permissible Roles
+mc_Channels = [ # Channel List of dictionaries
+    {'name':"mc", 'channel_id':942193852058574949, 'docker_name':"build_main_2021_1"},
+    {'name':"liam", 'channel_id':942241180421328896, 'docker_name':"build_liam_2022_1"}
+]
+
 
 @bot.event
 async def on_message(message):
@@ -23,22 +30,29 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
+
 @bot.command(name='whitelist')
 async def whitelist(ctx, *, mess):
-    usrname = mess #this is the username that the discord user types after /whitelist
-    finalmsg = mess + " has been added" #adds usrname and has been added to the varible finalmsg
+    usrname = mess
+    finalmsg = mess + " has been whitelisted."
     
     # Check Roles
     if not discord.ext.commands.has_any_role(role_Whitelist):
         return
        
-    # Check Channel to determine server ID
+    # Check Channel to determine server ID to execute through
+    channelID = ctx.channel.id
 
-    # Command Execution Via Commandline through Docker
-    os.system('cmd /k "COMMAND"')
+    # Check all channels in list for channel ID, then execute if found.
+    for channel in mc_Channels:
+            if channelID == channel.get('channel_id'):
+
+                # Command Execution Via Commandline through Docker
+                dockerName = channel.get('docker_name')
+                os.system(f'cmd /k "docker exec {dockerName} rcon-cli /whitelist add {usrname}"')
+                print(f"{mess} has been whitelisted in {dockerName}.")
 
     await ctx.send(finalmsg) #sends finalmsg to the discord channel
 
 
-# Test/Run
 bot.run(os.getenv('TOKEN'))
