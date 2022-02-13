@@ -1,7 +1,12 @@
+#   Pinebot
+#   By: Emmett Peck
+#
+#   A simple discord bot to allow remote whitelisting through discord.
+#
+
 import os
 import discord
 from discord.ext import commands
-#from mcrcon import MCRcon
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,10 +34,8 @@ async def whitelist(ctx, *, mess):
        
     # Check Channel to determine server ID
 
+    # Command Execution Via Commandline through Docker
     os.system('cmd /k "COMMAND"')
-    ''' # MCRcon Solution to interact with servers
-    with MCRcon(os.getenv('HOSTNAME'), os.getenv('RCON_PASS')) as mcr: #send the whitelist command to minecraft server
-        resp = mcr.command("/whitelist add " + usrname)'''
 
     await ctx.send(finalmsg) #sends finalmsg to the discord channel
 
