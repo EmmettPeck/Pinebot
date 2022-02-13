@@ -10,7 +10,7 @@ from discord.ext import commands
 from dotenv import load_dotenv
 
 load_dotenv()
-bot = commands.Bot(command_prefix='/', help_command=None) # Set Prefix
+bot = commands.Bot(command_prefix='#', help_command=None) # Set Prefix
 
 
 role_Whitelist = {'Member', 'Moderator'} #Permissible Roles
@@ -33,15 +33,14 @@ async def on_message(message):
 
 @bot.command(name='whitelist')
 async def whitelist(ctx, *, mess):
-    usrname = mess
-    finalmsg = mess + " has been whitelisted."
-    
+ 
     # Check Roles
     if not discord.ext.commands.has_any_role(role_Whitelist):
         return
        
     # Check Channel to determine server ID to execute through
     channelID = ctx.channel.id
+    print(f"--- Grabbed ID {channelID}") # A Test Argument
 
     # Check all channels in list for channel ID, then execute if found.
     for channel in mc_Channels:
@@ -49,10 +48,10 @@ async def whitelist(ctx, *, mess):
 
                 # Command Execution Via Commandline through Docker
                 dockerName = channel.get('docker_name')
-                os.system(f'cmd /k "docker exec {dockerName} rcon-cli /whitelist add {usrname}"')
+                os.system(f'cmd /k "docker exec {dockerName} rcon-cli /whitelist add {mess}"')
                 print(f"{mess} has been whitelisted in {dockerName}.")
 
-    await ctx.send(finalmsg) #sends finalmsg to the discord channel
+    await ctx.send(mess + " has been whitelisted.") #sends finalmsg to the discord channel
 
 
 bot.run(os.getenv('TOKEN'))
