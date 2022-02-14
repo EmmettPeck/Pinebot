@@ -4,6 +4,12 @@
 #   A simple discord bot to allow remote whitelisting through discord.
 #   To be run on linux server alongside dockerized servers.
 
+#   TO/DO
+#   -   Help Command
+#   -   CHANNEL NOT FOUND/WRONG CHANNEL MSG
+#   -   Check Roles
+#   -   Command send function from serverID & command
+
 import os
 import discord
 from discord.ext import commands
@@ -38,23 +44,51 @@ async def whitelist(ctx, *, mess):
     # Check Roles
     if not discord.ext.commands.has_any_role(role_Whitelist):
         return
-    print(f"Attempting to Whitelist Player {mess}")
+    
 
-    # Check Channel to determine server ID to execute through
-    channelID = ctx.channel.id
-    print(f"--- Grabbed ID {channelID}") # A Test Argument
+    channelID = ctx.channel.id  # Check Channel to determine server ID to execute through
 
-    # Check all channels in list for channel ID, then execute if found.
-    for channel in mc_Channels:
+    for channel in mc_Channels: # Check all channels in list for channel ID, then execute if found.
             if channelID == channel.get('channel_id'):
 
                 # Command Execution Via Commandline through Docker
                 dockerName = channel.get('docker_name')
                 resp_bytes = subprocess.Popen(f'docker exec {dockerName} rcon-cli /whitelist add {mess}', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
                 resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                print(f"Sent command /whitelist add {mess} to {dockerName}")
                 print(f'--- {resp_str}')
+            else:
+                # CHANNEL NOT FOUND/WRONG CHANNEL MSG
+                return
 
-    await ctx.send(resp_str) #sends finalmsg to the discord channel
+    await ctx.send(resp_str) # Bot response
+
+@bot.command(name='send')
+async def whitelist(ctx, *, mess):
+ 
+    # Check Roles
+    if not discord.ext.commands.has_any_role(role_Whitelist):
+        return
+
+
+    channelID = ctx.channel.id  # Check Channel to determine server ID to execute through
+
+    for channel in mc_Channels: # Check all channels in list for channel ID, then execute if found.
+            if channelID == channel.get('channel_id'):
+
+                # Command Execution Via Commandline through Docker
+                dockerName = channel.get('docker_name')
+                resp_bytes = subprocess.Popen(f'docker exec {dockerName} rcon-cli /{mess}', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
+                resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+               
+                # Console Logging
+                print(f"Sent command /{mess} to {dockerName}")
+                print(f'--- {resp_str}')
+            else:
+                # CHANNEL NOT FOUND/WRONG CHANNEL MSG
+                return
+
+    await ctx.send(resp_str) # Bot response
 
 
 bot.run(os.getenv('TOKEN'))
