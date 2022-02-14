@@ -5,8 +5,8 @@
 #   To be run on linux server alongside dockerized servers.
 
 #   TO/DO
-#   -   Help Command
-#   -   Check Roles
+#   -   Breakout mcChannels into external file
+#   -   Breakout role_Whitelist into external file
 
 import os
 import discord
