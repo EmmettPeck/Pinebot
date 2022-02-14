@@ -8,6 +8,7 @@ import os
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
+import subprocess
 
 load_dotenv()
 bot = commands.Bot(command_prefix='#', help_command=None) # Set Prefix
@@ -37,7 +38,8 @@ async def whitelist(ctx, *, mess):
     # Check Roles
     if not discord.ext.commands.has_any_role(role_Whitelist):
         return
-       
+    print(f"Attempting to Whitelist Player {mess}")
+
     # Check Channel to determine server ID to execute through
     channelID = ctx.channel.id
     print(f"--- Grabbed ID {channelID}") # A Test Argument
@@ -48,9 +50,11 @@ async def whitelist(ctx, *, mess):
 
                 # Command Execution Via Commandline through Docker
                 dockerName = channel.get('docker_name')
-                os.system(f'docker exec {dockerName} rcon-cli /whitelist add {mess}')
+                resp_bytes = subprocess.Popen(f'docker exec {dockerName} rcon-cli /whitelist add {mess}', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
+                resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                print(f'--- {resp_str}')
 
-    await ctx.send(mess + " has been whitelisted.") #sends finalmsg to the discord channel
+    await ctx.send(resp_str) #sends finalmsg to the discord channel
 
 
 bot.run(os.getenv('TOKEN'))
