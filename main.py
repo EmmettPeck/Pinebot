@@ -26,7 +26,7 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.startswith('hello'):
+    if message.content.startswith('hello') | message.content.startswith('hi'):
         await message.channel.send('Hello!')
 
     await bot.process_commands(message)
