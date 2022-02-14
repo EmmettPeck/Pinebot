@@ -1,3 +1,8 @@
+#   dockingPort.py
+#   by: Emmett Peck
+#   A python function that allows interracting with docker minecraft servers on PineServer
+#
+
 import subprocess
 
 
