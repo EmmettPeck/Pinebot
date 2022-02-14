@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from dockingPort import portSend
 
 load_dotenv()
-bot = commands.Bot(command_prefix='#', help_command=None) # Set Prefix
+bot = commands.Bot(command_prefix='>') # Set Prefix
 
 role_Whitelist = {'Member', 'Moderator'} #Permissible Roles
 
@@ -30,7 +30,7 @@ async def on_message(message):
     await bot.process_commands(message)
 
 
-@bot.command(name='whitelist')
+@bot.command(name='whitelist', help="Usage: >whitelist <arg>.", brief="Whitelists <arg> player on the corresponding channel's server.")
 async def whitelist(ctx, *, mess):
  
     # Check Roles
@@ -41,7 +41,7 @@ async def whitelist(ctx, *, mess):
     response = portSend(ctx.channel.id, f"whitelist add {mess}")
     await ctx.send(response) # Bot response
 
-@bot.command(name='send')
+@bot.command(name='send', help="Usage: >send <arg>.", brief="Sends <arg> command to the corresponding channel's server.")
 async def whitelist(ctx, *, mess):
  
     # Check Roles
