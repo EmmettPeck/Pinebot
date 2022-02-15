@@ -1,2 +1,4 @@
 .*
-cogs/__pycache__/*.pyc
+*.pyc
+cogs/__pycache__/
+__pycache__/
