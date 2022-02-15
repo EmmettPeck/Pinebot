@@ -20,7 +20,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
-extensions = ['cogs.utils', 'cogs.social'] #Cogfiles
+extensions = ['cogs.utils', 'cogs.social', 'cogs.owner'] #Cogfiles
 
 def get_prefix(bot, message):
     """A callable Prefix for our bot. This could be edited to allow per server prefixes."""
