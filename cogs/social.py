@@ -15,7 +15,6 @@ class SocialCog(commands.Cog):
 
         if message.content.startswith('hello') | message.content.startswith('hi') | message.content.startswith('Hello')| message.content.startswith('Hi'):
             await message.channel.send('Hello!')
-
-        await self.bot.process_commands(message)
+            
 def setup(bot):
     bot.add_cog(SocialCog(bot))        

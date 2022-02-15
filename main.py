@@ -7,6 +7,8 @@
 #   TO/DO
 #   -   Breakout mcChannels into external file
 #   -   Breakout role_Whitelist into external file
+#   -   Server List Command
+#   -   "Start Here" Channel Minecraft
 
 
 import discord
