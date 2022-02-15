@@ -11,7 +11,6 @@
 #   -   "Start Here" Channel Minecraft
 #   -   Purge x chats admin command
 #   -   Consider ideas of how to a live minecraft/server chat integrated? (Docker logs watcher/filterer)
-#   *   Changing bot presence based on time of day (5-8pm playing on server) 10 - 8am sleeping, working, etc. Make lively
 #   -   Whitelisting Application System (reacts?)
 
 import discord
