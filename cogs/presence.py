@@ -2,15 +2,15 @@
 #by: Emmett Peck
 """A cog that adds logging on_ready and scheduled set_presence"""
 
-
-import asyncio
 from datetime import datetime
 import discord
 from discord.ext import tasks, commands
 
 class Presence(commands.Cog):
-    def __init__(self):
-        self.set_presence.start()
+
+    def __init__(self, bot):
+        self.bot = bot
+
 
     def cog_unload(self):
         self.set_presence.cancel()
@@ -19,25 +19,31 @@ class Presence(commands.Cog):
     async def on_ready(self):
         print("----------------- PineBot -----------------")
         print(f'Logged in as: {self.bot.user.name} - {self.bot.user.id}\nVersion: {discord.__version__}\n')
+        self.set_presence.start()
         print('Successfully logged in and booted...\n')
     
-    @tasks.loop(minutes=1.0)
+    @tasks.loop(minutes = 10)
     async def set_presence(self):
-        now = datetime.now()
-        hour = now.strftime("%H")
+        hour = int(datetime.now().strftime("%H"))
 
-        if hour >= 22 and hour < 7:
-            self.bot.change_presence(activity = discord.Activity(type = discord.ActivityType.Custom, emoji=":zzz:",name = 'Sleeping'))
+        print(f"Hour: {hour}")
+        if hour >= 22 or hour < 7:
+            _activity = discord.Activity(type = discord.ActivityType.watching, name = 'the night roll by 💤')
+            _status = discord.Status.idle
         elif hour >= 7 and hour < 8:
-            self.bot.change_presence(activity = discord.Activity(type = discord.ActivityType.Custom, emoji=":coffee:",name = 'Getting Ready For The Day'))
+            _activity = discord.Activity(type = discord.ActivityType.listening, name = 'a podcast ☕', status=discord.Status.online)
+            _status = discord.Status.online
         elif hour >= 8 and hour < 17:
-            self.bot.change_presence(activity = discord.Activity(type = discord.ActivityType.Custom, emoji=":evergreen:",name = 'Working for www.pineserver.net'))
-        elif hour >= 17 and hour < 21:
-            self.bot.change_presence(activity = discord.Activity(type = discord.ActivityType.playing, name = 'mc.pineserver.net'))
+            _activity = discord.Activity(type = discord.ActivityType.listening, name = 'customers 🌲', status=discord.Status.online)
+            _status = discord.Status.online
         elif hour >= 21 and hour < 22:
-            self.bot.change_presence(activity = discord.Activity(type = discord.ActivityType.Custom, emoji=":book:",name = 'Getting Ready For Bed'))
-        else:
-            print("ERROR: Bot Presence detected outside of 0-24HR range.")
-        
+            _activity = discord.Activity(type = discord.ActivityType.watching, name = 'the pages roll by 📖', status=discord.Status.online)
+            _status = discord.Status.online
+        else:#elif hour >= 17 and hour < 21:
+            _activity = discord.Activity(type = discord.ActivityType.playing, name = 'mc.pineserver.net', status=discord.Status.online)
+            _status = discord.Status.online
+
+        await self.bot.change_presence(activity = _activity, status = _status)
+
 def setup(bot):
     bot.add_cog(Presence(bot))        
