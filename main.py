@@ -26,23 +26,26 @@ async def on_message(message):
     if message.author == bot.user:
         return
 
-    if message.content.startswith('hello') | message.content.startswith('hi'):
+    if message.content.startswith('hello') | message.content.startswith('hi') | message.content.startswith('Hello')| message.content.startswith('Hi'):
         await message.channel.send('Hello!')
 
     await bot.process_commands(message)
-
+'''
+# >getID
+@bot.command(name='getID',help='Returns current channel ID',brief='Returns channel ID')
+@has_permissions(administrator=True)
+async def getID(ctx):
+    await ctx.send(ctx.channel.id)
+'''
 # >whitelist
 @bot.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {role_Whitelist} role.", brief="Whitelists <arg> player on the corresponding channel's server.")
 @commands.has_any_role(role_Whitelist)
 async def whitelist(ctx, *, mess):
  
-    # Check Roles
-    if not discord.ext.commands.has_any_role(role_Whitelist):
-        return
-    
     # Send command
     response = portSend(ctx.channel.id, f"whitelist add {mess}")
     await ctx.send(response) # Bot response
+
 @whitelist.error
 async def whitelist_error(error, ctx):
     if isinstance(error, CheckFailure):
@@ -54,8 +57,8 @@ async def whitelist_error(error, ctx):
 async def send(ctx, *, mess):
 
     response = portSend(ctx.channel.id, mess)
-
     await ctx.send(response) # Bot response
+
 @send.error
 async def send_error(error, ctx):
     if isinstance(error, CheckFailure):
