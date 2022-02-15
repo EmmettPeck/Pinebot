@@ -8,15 +8,17 @@
 #   -   Breakout mcChannels into external file
 #   -   Breakout role_Whitelist into external file
 
-import os
+
 import discord
+from discord.ext import commands
 import sys, traceback
 
+import os
 from dotenv import load_dotenv
-from discord.ext import commands
+
 
 load_dotenv()
-extensions = ['cogs.owner', 'cogs.utils', 'cogs.social'] #Cogfiles
+extensions = ['cogs.utils', 'cogs.social'] #Cogfiles
 
 def get_prefix(bot, message):
     """A callable Prefix for our bot. This could be edited to allow per server prefixes."""
@@ -26,21 +28,19 @@ def get_prefix(bot, message):
     return commands.when_mentioned_or(*prefixes)(bot, message)
 
 # Set Prefix
-bot = commands.Bot(command_prefix=get_prefix, description='A server interface bot.')
+bot = commands.Bot(command_prefix=get_prefix, description="Hi! I'm PineBot, Pineserver's discord interface.")
 
-# Load cogs listed in extensions
-if __name__ == '__main__':
+if __name__ == '__main__': # Load cogs listed in extensions
     for extension in extensions:
         bot.load_extension(extension)
 
-# On Ready
 @bot.event
 async def on_ready():
-    print("----------- PineBot ---------- ")
-    print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
+    print("----------------- PineBot -----------------")
+    print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
 
     # Change bot playing status
-    await bot.change_presence(game=discord.Game(name='Minecraft', type=1, url='mc.pineserver.net'))
-    print(f'Successfully logged in and booted...')
+    await bot.change_presence(activity = discord.Activity(type = discord.ActivityType.playing, name = 'mc.pineserver.net'))
+    print('Successfully logged in and booted...\n')
 
-bot.run(os.getenv('TOKEN'))
+bot.run(os.getenv('TOKEN'),bot=True, reconnect=True)
