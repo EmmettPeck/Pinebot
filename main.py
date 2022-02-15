@@ -11,7 +11,7 @@
 #   -   "Start Here" Channel Minecraft
 #   -   Purge x chats admin command
 #   -   Consider ideas of how to a live minecraft/server chat integrated? (Docker logs watcher/filterer)
-#   -   Changing bot presence based on time of day (5-8pm playing on server) 10 - 8am sleeping, working, etc. Make lively
+#   *   Changing bot presence based on time of day (5-8pm playing on server) 10 - 8am sleeping, working, etc. Make lively
 #   -   Whitelisting Application System (reacts?)
 
 import discord
@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
-extensions = ['cogs.utils', 'cogs.social', 'cogs.owner'] #Cogfiles
+extensions = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence'] #Cogfiles
 
 def get_prefix(bot, message):
     """A callable Prefix for our bot. This could be edited to allow per server prefixes."""
@@ -38,14 +38,5 @@ bot = commands.Bot(command_prefix=get_prefix, description="Hi! I'm PineBot, Pine
 if __name__ == '__main__': # Load cogs listed in extensions
     for extension in extensions:
         bot.load_extension(extension)
-
-@bot.event
-async def on_ready():
-    print("----------------- PineBot -----------------")
-    print(f'Logged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
-
-    # Change bot playing status
-    await bot.change_presence(activity = discord.Activity(type = discord.ActivityType.playing, name = 'mc.pineserver.net'))
-    print('Successfully logged in and booted...\n')
 
 bot.run(os.getenv('TOKEN'),bot=True, reconnect=True)
