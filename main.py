@@ -10,60 +10,37 @@
 
 import os
 import discord
-from discord.ext import commands
-from discord.ext.commands import has_permissions, CheckFailure
+import sys, traceback
+
 from dotenv import load_dotenv
-from dockingPort import portSend
+from discord.ext import commands
 
 load_dotenv()
-bot = commands.Bot(command_prefix='>') # Set Prefix
+extensions = ['cogs.owner', 'cogs.utils', 'cogs.social'] #Cogfiles
 
-role_Whitelist = {'Member', 'Moderator', 'Liam'} #Permissible Roles
+def get_prefix(bot, message):
+    """A callable Prefix for our bot. This could be edited to allow per server prefixes."""
 
-# Hello!
+    prefixes = ['>', 'lol ']
+
+    return commands.when_mentioned_or(*prefixes)(bot, message)
+
+# Set Prefix
+bot = commands.Bot(command_prefix=get_prefix, description='A server interface bot.')
+
+# Load cogs listed in extensions
+if __name__ == '__main__':
+    for extension in extensions:
+        bot.load_extension(extension)
+
+# On Ready
 @bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
+async def on_ready():
+    print("----------- PineBot ---------- ")
+    print(f'\n\nLogged in as: {bot.user.name} - {bot.user.id}\nVersion: {discord.__version__}\n')
 
-    if message.content.startswith('hello') | message.content.startswith('hi') | message.content.startswith('Hello')| message.content.startswith('Hi'):
-        await message.channel.send('Hello!')
-
-    await bot.process_commands(message)
-'''
-# >getID
-@bot.command(name='getID',help='Returns current channel ID',brief='Returns channel ID')
-@has_permissions(administrator=True)
-async def getID(ctx):
-    await ctx.send(ctx.channel.id)
-'''
-# >whitelist
-@bot.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {role_Whitelist} role.", brief="Whitelists <arg> player on the corresponding channel's server.")
-@commands.has_any_role(role_Whitelist)
-async def whitelist(ctx, *, mess):
- 
-    # Send command
-    response = portSend(ctx.channel.id, f"whitelist add {mess}")
-    await ctx.send(response) # Bot response
-
-@whitelist.error
-async def whitelist_error(error, ctx):
-    if isinstance(error, CheckFailure):
-        await bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
-
-# >send
-@bot.command(name='send', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends <arg> command to the corresponding channel's server.")
-@has_permissions(administrator=True)
-async def send(ctx, *, mess):
-
-    response = portSend(ctx.channel.id, mess)
-    await ctx.send(response) # Bot response
-
-@send.error
-async def send_error(error, ctx):
-    if isinstance(error, CheckFailure):
-        await bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
-
-
+    # Change bot playing status
+    await bot.change_presence(game=discord.Game(name='Minecraft', type=1, url='mc.pineserver.net'))
+    print(f'Successfully logged in and booted...')
 
 bot.run(os.getenv('TOKEN'))
