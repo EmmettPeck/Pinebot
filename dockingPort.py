@@ -25,7 +25,6 @@ def portSend(channelID, command): # Sends a command to corresponding server ID. 
                 print(f"Sent command /{command} to {dockerName}")
                 print(f'--- {resp_str}')
                 return resp_str
-            else:
-                # CHANNEL NOT FOUND/WRONG CHANNEL MSG
-                return "Channel Not Found. Use command only in 'Minecraft' text channels."
+    # CHANNEL NOT FOUND/WRONG CHANNEL MSG
+    return "Channel Not Found. Use command only in 'Minecraft' text channels."
             
