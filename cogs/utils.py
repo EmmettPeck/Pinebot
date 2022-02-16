@@ -1,14 +1,32 @@
+#utils.py
+"""A cog for discord.py that carries an assortment of utility commands for Pineserver"""
 import discord
 from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
-from dockingPort import portSend
 
-role_Whitelist = {'Member', 'Moderator', 'Liam'} #Permissible Roles That REALLY need to be broken out into a file
+import json
+from dockingPort import DockingPort
+
+def load_whitelist():
+    # Load role_Whitelist.json
+    with open(r"data/role_Whitelist.json", 'r') as read_file:
+        role_Whitelist = json.load(read_file)
+    return role_Whitelist
+
+# Using global variables because decorators can't use self.
+role_Whitelist = load_whitelist()
 
 class Utilities(commands.Cog):
 
     def __init__(self, bot):
+        self.dockingPort=DockingPort()
         self.bot = bot
+
+    #AddDockerID
+        # Append -> Save -> Run load_mc_Channels
+
+    #AddWhitelistRole
+        # Append to json -> Reload cog
 
     #GetID
     @commands.command(name='getID',help='Returns current channel ID',brief='Returns channel ID')
@@ -22,7 +40,9 @@ class Utilities(commands.Cog):
     async def whitelist(self, ctx, *, mess):
         ''' Whitelists <args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
 
-        response = portSend(ctx.channel.id, f"whitelist add {mess}")
+        # Check Roles agains role_Whitelist
+
+        response = self.dockingPort.portSend(ctx.channel.id, f"whitelist add {mess}")
         await ctx.send(response)
 
     @whitelist.error
@@ -37,7 +57,7 @@ class Utilities(commands.Cog):
     async def send(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
 
-        response = portSend(ctx.channel.id, mess)
+        response = self.dockingPort.portSend(ctx.channel.id, mess)
         await ctx.send(response)
 
     @send.error

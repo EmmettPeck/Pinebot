@@ -5,21 +5,20 @@
 #   To be run on linux server alongside dockerized servers.
 
 #   TO/DO
-#   -   Breakout mcChannels into external file
-#   -   Breakout role_Whitelist into external file
 #   -   Server List Command
 #   -   "Start Here" Channel Minecraft
 #   -   Purge x chats admin command
 #   -   Consider ideas of how to a live minecraft/server chat integrated? (Docker logs watcher/filterer)
 #   -   Whitelisting Application System (reacts?)
+#   -   Test if admin commands are hidden from non-admins (ifso you can make a command that sets a channel as a dockerID)
 
 import discord
 from discord.ext import commands
 import sys, traceback
 
 import os
+import json
 from dotenv import load_dotenv
-
 
 load_dotenv()
 extensions = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence'] #Cogfiles

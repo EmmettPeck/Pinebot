@@ -30,9 +30,9 @@ class Presence(commands.Cog):
     
     @tasks.loop(minutes = 1)
     async def set_presence(self):
-        hour = 7 #int(datetime.now().strftime("%H"))
+        hour = int(datetime.now().strftime("%H"))
 
-        print(f"Hour: {hour}")
+        #print(f"Hour: {hour}")
         if hour >= 22 or hour < 7:
             _activity = discord.Activity(type = discord.ActivityType.watching, name = 'the night roll by 💤')
             _status = discord.Status.idle
