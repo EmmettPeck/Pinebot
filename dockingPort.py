@@ -40,5 +40,32 @@ class DockingPort():
     # Constantly checking -> How to efficiently handle? Check every tiny interval using async?
     # ```[<playername>]: <msg>```
 
-    def portRead():
-        """A python function that allows bot reacting to the live reading of docker minecraft logs on PineServer"""
+    # In future migrated to using docker API, SO much better
+    def portRead(self, channelID):
+        """A python function that checks past 15 messages of a channel, and returns a list of strings of formatted messages to be sent (in order) to caller"""
+
+        resp_str = ""
+
+        # Filter for channel
+        for channel in self.mc_Channels:
+                if channelID == channel.get('channel_id'):
+                    # Follow logs
+                    dockerName = channel.get('docker_name')
+                    # Uses tail, assuming there won't be more than 10-15 msgs per runtime
+                    resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 15', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
+                    resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                    break
+
+        # Filter logs
+        for line in resp_str.split('\n'): # Verify it even uses \n
+            print(line.split('] [Server thread/INFO]:')[1]) # Strips text to being after [Server thread/INFO]:
+
+        # Parse and send information to msger
+
+        # Use a loop
+
+# PortRead test function 
+if __name__ == '__main__':
+    dockingPort=DockingPort()
+    dockingPort.portRead(942193852058574949)
+    print("Done")
