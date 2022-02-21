@@ -9,15 +9,17 @@ class DockingPort():
 
     def __init__(self):
         self.load_mc_Channels()
-        self.mc_Channels[0]["IP"] = "mc.pineserver.net"     # TEMP
-        self.mc_Channels[1]["IP"] = "liam.pineserver.net"   # TEMP
+        self.mc_Channels[0]["ip"] = "mc.pineserver.net"     # TEMP
+        self.mc_Channels[1]["ip"] = "liam.pineserver.net"   # TEMP
+        self.mc_Channels[0]["description"] = "Latest version vanilla server"          # TEMP
+        self.mc_Channels[1]["description"] = "Liam's latest version vanilla server"   # TEMP
 
     # JSON Load
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             self.mc_Channels = json.load(read_file)
 
-    
+
 
     # Command Send -> 
     def portSend(self, channelID, command): # Sends a command to corresponding server ID. Returns a string output of command response.
