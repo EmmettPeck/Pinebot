@@ -61,11 +61,18 @@ class Utilities(commands.Cog):
     #ServerList
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", breif="Lists all servers running on pineserver.net")
     async def server_list(self, ctx):
-        message = f"""```**Pineserver.net**
-        Name  |  IP
-        """
+        message = f"""```Pineserver.net\nName    | IP\n"""
         for dict in self.dockingPort.mc_Channels:
-            message += dict.get("name") + " | "+dict.get("IP") + "\n"
+            
+            # Format Spacing
+            i = 8 - len(dict.get("name"))
+            spacing = ""
+            while i > 0:
+                spacing += " "
+                i+=1
+
+            # Print Element
+            message += dict.get("name") + spacing +"| "+dict.get("IP") + "\n"
 
         message +="```"
         await ctx.send(message)
