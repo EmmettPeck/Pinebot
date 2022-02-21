@@ -22,12 +22,6 @@ class Utilities(commands.Cog):
         self.dockingPort=DockingPort()
         self.bot = bot
 
-    #AddDockerID
-        # Append -> Save -> Run load_mc_Channels
-
-    #AddWhitelistRole
-        # Append to json -> Reload cog
-
     #GetID
     @commands.command(name='getID',help='Returns current channel ID',brief='Returns channel ID')
     async def getID(self, ctx):
@@ -41,7 +35,6 @@ class Utilities(commands.Cog):
         ''' Whitelists <args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
 
         # Check Roles agains role_Whitelist
-
         response = self.dockingPort.portSend(ctx.channel.id, f"whitelist add {mess}")
         await ctx.send(response)
 
@@ -65,6 +58,17 @@ class Utilities(commands.Cog):
         if isinstance(error, CheckFailure):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
 
+    #ServerList
+    @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", breif="Lists all servers running on pineserver.net")
+    async def server_list(self, ctx):
+        message = f"""```**Pineserver.net**
+        Name  |  IP
+        """
+        for dict in self.dockingPort.mc_Channels:
+            message += dict.get("name") + " | "+dict.get("IP") + "\n"
+
+        message +="```"
+        await ctx.send(message)
 
 def setup(bot):
     bot.add_cog(Utilities(bot))
