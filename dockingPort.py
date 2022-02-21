@@ -9,8 +9,8 @@ class DockingPort():
 
     def __init__(self):
         self.load_mc_Channels()
-        self.mc_Channels["IP"][0] = "mc.pineserver.net"     # TEMP
-        self.mc_Channels["IP"][1] = "liam.pineserver.net"   # TEMP
+        self.mc_Channels[0]["IP"] = "mc.pineserver.net"     # TEMP
+        self.mc_Channels[1]["IP"] = "liam.pineserver.net"   # TEMP
 
     # JSON Load
     def load_mc_Channels(self): 
@@ -62,9 +62,12 @@ class DockingPort():
 
         # Filter logs
         for line in resp_str.split('\n'): # Verify it even uses \n
-            print(line.split('] [Server thread/INFO]:')[1]) # Strips text to being after [Server thread/INFO]:
+            split_line = line.split('] [Server thread/INFO]:')
+            if len(split_line) == 2: # 1 Corresponds to 1 element, 2 to 2 elements
+                print(split_line[1]) # Strips text to being after [Server thread/INFO]:
 
         # Parse and send information to msger
+        
 
         # Use a loop
 
