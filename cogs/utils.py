@@ -67,7 +67,7 @@ class Utilities(commands.Cog):
             # Format Spacing
             i = 8 - len(dict.get("name"))
             spacing = ""
-            while i > 0:
+            while i < 8:
                 spacing += " "
                 i+=1
 
