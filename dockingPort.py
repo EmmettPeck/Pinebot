@@ -70,13 +70,16 @@ class DockingPort():
         msg_list = []
         for line in resp_str.split('\n'):
             split_line = line.split('] [Server thread/INFO]:')
-            if len(split_line) == 2: # 1 Corresponds to 1 element, 2 to 2 elements
                 
+            if len(split_line) == 2: # 1 Corresponds to 1 element, 2 to 2 elements
+                # Save Time
+                time = split_line[0].split('[',1)[1]
+
                 # Message Detection using <{user}> {msg}
                 if '<' and '>' in split_line[1]:
-                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('>')]
+                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')] 
                     msg  = split_line[1].split('> ', 1)[1]
-                    print (f" --- User:{user}, Msg:{msg}")
+                    print (f" --- Time:{time}, User:{user}, Msg:{msg}")
 
 
 # PortRead test function 
