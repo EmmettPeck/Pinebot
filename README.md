@@ -31,6 +31,7 @@ Will need to write a small datapack or interface with PineBot through rcon comma
 - Chat-Link
 - Player activity presence/tracking [Logging on/off, who, when] chat channel presence
 - List command analytics function & info handling
+- Dockerize & Docker-Compose
 
 ### Discord Channel
 
