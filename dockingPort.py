@@ -13,13 +13,17 @@ class DockingPort():
         self.mc_Channels[1]["ip"] = "liam.pineserver.net"   # TEMP
         self.mc_Channels[0]["description"] = "Latest version vanilla server"          # TEMP
         self.mc_Channels[1]["description"] = "Liam's latest version vanilla server"   # TEMP
+        self.save_mc_Channels() # TEMP
 
     # JSON Load
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             self.mc_Channels = json.load(read_file)
 
-
+    def save_mc_Channels(self):
+        # Overwrites json
+        with open(r"data/mc_Channels.json", 'w') as write_file:
+            json.dump(self.mc_Channels,write_file)
 
     # Command Send -> 
     def portSend(self, channelID, command): # Sends a command to corresponding server ID. Returns a string output of command response.
@@ -62,16 +66,18 @@ class DockingPort():
                     resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                     break
 
-        # Filter logs
-        for line in resp_str.split('\n'): # Verify it even uses \n
+        # Parse and send information to msger using tellraw
+        msg_list = []
+        for line in resp_str.split('\n'):
             split_line = line.split('] [Server thread/INFO]:')
             if len(split_line) == 2: # 1 Corresponds to 1 element, 2 to 2 elements
-                print(split_line[1]) # Strips text to being after [Server thread/INFO]:
+                
+                # On lines with <>, grab and add to array
+                if '<' and '>' in split_line[1]:
+                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('>')]
+                    msg  = split_line[1].strip('>')
+                    print (f"User:{user}, Msg:{msg}")
 
-        # Parse and send information to msger
-        
-
-        # Use a loop
 
 # PortRead test function 
 if __name__ == '__main__':

@@ -61,7 +61,7 @@ class Utilities(commands.Cog):
     #ServerList
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", breif="Lists all servers running on pineserver.net")
     async def server_list(self, ctx):
-        message = f"""``Pineserver.net``\n```Name    | IP                 | Description\n"""
+        message = f"""``Server List``\n```Name    | IP                 | Description\n"""
         for dict in self.dockingPort.mc_Channels:
             
             # Format Spacing
@@ -71,7 +71,7 @@ class Utilities(commands.Cog):
                 name_spacing += " "
                 ni+=1
 
-            pi = len(dict.get("IP"))
+            pi = len(dict.get("ip"))
             ip_spacing = ""
             while pi < 19:
                 ip_spacing += " "
