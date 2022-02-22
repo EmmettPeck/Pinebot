@@ -4,16 +4,14 @@
 
 import json
 import subprocess
+import hashlib
+import datetime
 
 class DockingPort():
 
     def __init__(self):
         self.load_mc_Channels()
-        self.mc_Channels[0]["ip"] = "mc.pineserver.net"     # TEMP
-        self.mc_Channels[1]["ip"] = "liam.pineserver.net"   # TEMP
-        self.mc_Channels[0]["description"] = "Latest version vanilla server"          # TEMP
-        self.mc_Channels[1]["description"] = "Liam's latest version vanilla server"   # TEMP
-        self.save_mc_Channels() # TEMP
+        self.load_fingerprintDB()
 
     # JSON Load
     def load_mc_Channels(self): 
@@ -24,6 +22,16 @@ class DockingPort():
         # Overwrites json
         with open(r"data/mc_Channels.json", 'w') as write_file:
             json.dump(self.mc_Channels,write_file)
+
+    def load_fingerprintDB(self):
+        """Loads the previous 100 message hashes"""
+        with open(r"data/hashDump.json", 'r') as read_file:
+            self.fingerprintDB = json.load(read_file)
+    
+    def save_fingerprintDB(self):
+        """Saves the previous 100 message hashes"""
+        with open(r"data/hashDump.json", 'w') as write_file:
+            json.dump(self.fingerprintDB, write_file)
 
     # Command Send -> 
     def portSend(self, channelID, command): # Sends a command to corresponding server ID. Returns a string output of command response.
@@ -55,6 +63,7 @@ class DockingPort():
         """A python function that checks past 15 messages of a channel, and returns a list of strings of formatted messages to be sent (in order) to caller"""
 
         resp_str = ""
+        return_list = []
 
         # Filter for channel
         for channel in self.mc_Channels:
@@ -75,14 +84,44 @@ class DockingPort():
                 # Save Time
                 time = split_line[0].split('[',1)[1]
 
-                # Message Detection using <{user}> {msg}
+            # Message Detection using <{user}> {msg}
                 if '<' and '>' in split_line[1]:
                     user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')] 
                     msg  = split_line[1].split('> ', 1)[1]
                     print (f" --- Time:{time}, User:{user}, Msg:{msg}")
 
+                # Fingerprint handling
+                    # Create SHA256 Hash to prevent message conflicts
+                    sha256hash = hashlib.sha256()
+                    sha256hash.update(f"{time}{user}{msg}".encode('utf8'))
+                    hash_id = sha256hash.hexdigest()
+                    hash_int = int(hash_id,16)
+                    print(f" --- {hash_int}")
 
+                    # Compare hash to list, not staging information if present
+                    try:
+                        comparison = self.fingerprintDB.index(hash_int)
+                    except ValueError as v:
+                        # Insert into pos 0
+                        self.fingerprintDB.insert(0, hash_int)
+
+                        # Pop elements over pos 100
+                        if len(self.fingerprintDB) > 100:
+                            self.fingerprintDB.pop(100)
+                        
+                        # Stage list
+                        local_dict = {"time":time, "username":user, "message": msg}
+                        return_list.insert(0, local_dict)
+                        
+                    else:
+                        continue
+        # Save DB and return
+        self.save_fingerprintDB()
+        return return_list
+                            
+                    
+                        
 # PortRead test function 
 if __name__ == '__main__':
     dockingPort=DockingPort()
-    dockingPort.portRead(942193852058574949)
+    print(dockingPort.portRead(942193852058574949))
