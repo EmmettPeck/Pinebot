@@ -60,6 +60,7 @@ Will need to write a small datapack or interface with PineBot through rcon comma
 ### Utils Cog
 
 - Purge x chats admin command
+  - In MC channels w/ chatlink only have it affect commands & responses to commands
 - AddMCServerDict
   - > Append dictionary -> Save -> Run load_mc_Channels
 
