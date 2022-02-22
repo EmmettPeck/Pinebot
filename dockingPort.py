@@ -13,7 +13,7 @@ class DockingPort():
         self.load_mc_Channels()
         self.load_fingerprintDB()
 
-    # JSON Load
+    # Data Load/Saving
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             self.mc_Channels = json.load(read_file)
@@ -32,6 +32,30 @@ class DockingPort():
         """Saves the previous 100 message hashes"""
         with open(r"data/hashDump.json", 'w') as write_file:
             json.dump(self.fingerprintDB, write_file)
+    
+    def message_handler(self, time, username, message, return_list):
+        """Returns list of dictionaries if fingerprint not present in database"""
+        
+        # Print fancy message; Generate hash
+        print (f" --- Time:{time}, User:{username}, Msg:{message}")
+        sha256hash = hashlib.sha256()
+        sha256hash.update(f"{time}{username}{message}".encode('utf8'))
+        hash_id = sha256hash.hexdigest()
+        hash_int = int(hash_id,16)
+
+        # Compares Hash to database, if present does not insert dict into return_list
+        try:
+            comparison = self.fingerprintDB.index(hash_int)
+        except ValueError as v:
+            self.fingerprintDB.insert(0, hash_int) # Insert into pos 0
+
+            if len(self.fingerprintDB) > 100: # Pop elements over pos 100
+                self.fingerprintDB.pop(100)
+
+            # dict insertion to list
+            local_dict = {"time":time, "username":username, "message": message}
+            return_list.insert(0, local_dict)
+        return return_list
 
     # Command Send -> 
     def portSend(self, channelID, command): # Sends a command to corresponding server ID. Returns a string output of command response.
@@ -49,72 +73,46 @@ class DockingPort():
                     return resp_str
         # CHANNEL NOT FOUND/WRONG CHANNEL MSG
         return "Channel Not Found. Use command only in 'Minecraft' text channels."
-                
-    # THE GAMEPLAN
-    # Stream logs until a specific point in time
-    # docker logs --follow --until=1s Shows last 1 second of logs
-    # from the last 1 second of logs, filter, send player chat commands to corresponding channels
-    # From messages sent in channel, rcon send non-bot messages to server
-    # Constantly checking -> How to efficiently handle? Check every tiny interval using async?
-    # ```[<playername>]: <msg>```
 
     # In future migrated to using docker API, SO much better
     def portRead(self, channelID):
-        """A python function that checks past 15 messages of a channel, and returns a list of strings of formatted messages to be sent (in order) to caller"""
+        """Checks past 10 messages of a channel, returns a list of dicts of messages to be sent (in order) to caller channel"""
 
         resp_str = ""
         return_list = []
 
-        # Filter for channel
+        # Filters for channel, then converts tail 10 of the logs to a string
         for channel in self.mc_Channels:
-                if channelID == channel.get('channel_id'):
-                    # Follow logs
-                    dockerName = channel.get('docker_name')
-                    # Uses tail, assuming there won't be more than 10-15 msgs per runtime
-                    resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 15', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
-                    resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
-                    break
+            if channelID == channel.get('channel_id'):
+                dockerName = channel.get('docker_name') 
+                resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
+                resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                break
 
-        # Parse and send information to msger using tellraw
-        msg_list = []
+        # Seperate lines and filter for '] [Server thread/INFO]:'
         for line in resp_str.split('\n'):
             split_line = line.split('] [Server thread/INFO]:')
-                
-            if len(split_line) == 2: # 1 Corresponds to 1 element, 2 to 2 elements
-                # Save Time
-                time = split_line[0].split('[',1)[1]
+            
+            if len(split_line) == 2: # Separate time from messages of interest; 1 Corresponds to 1 element, 2 to 2 elements
+                time = split_line[0].split('[',1)[1] # Save Time
 
-            # Message Detection using <{user}> {msg}
+                # Message Detection using <{user}> {msg}
                 if '<' and '>' in split_line[1]:
-                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')] 
                     msg  = split_line[1].split('> ', 1)[1]
-                    print (f" --- Time:{time}, User:{user}, Msg:{msg}")
+                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')] 
+                    self.message_handler(time, user, msg, return_list)
 
-                # Fingerprint handling
-                    # Create SHA256 Hash to prevent message conflicts
-                    sha256hash = hashlib.sha256()
-                    sha256hash.update(f"{time}{user}{msg}".encode('utf8'))
-                    hash_id = sha256hash.hexdigest()
-                    hash_int = int(hash_id,16)
-                    print(f" --- {hash_int}")
+                # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
+                elif split_line[1].find(" joined the game.") >= 0: 
+                    msg = " joined the game."
+                    user = split_line[1].split(msg)
+                    self.message_handler(time, user, msg, return_list)
 
-                    # Compare hash to list, not staging information if present
-                    try:
-                        comparison = self.fingerprintDB.index(hash_int)
-                    except ValueError as v:
-                        # Insert into pos 0
-                        self.fingerprintDB.insert(0, hash_int)
+                elif split_line[1].find(" left the game.") >= 0:
+                    msg = " left the game."
+                    username = split_line[1].split(msg)
+                    self.message_handler(time, user, msg, return_list)
 
-                        # Pop elements over pos 100
-                        if len(self.fingerprintDB) > 100:
-                            self.fingerprintDB.pop(100)
-                        
-                        # Stage list
-                        local_dict = {"time":time, "username":user, "message": msg}
-                        return_list.insert(0, local_dict)
-                        
-                    else:
-                        continue
         # Save DB and return
         self.save_fingerprintDB()
         return return_list
