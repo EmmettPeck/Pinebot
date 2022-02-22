@@ -103,14 +103,14 @@ class DockingPort():
                     self.message_handler(time, user, msg, return_list)
 
                 # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
-                elif split_line[1].find(" joined the game.") >= 0: 
-                    msg = " joined the game."
-                    user = split_line[1].split(msg)
+                elif split_line[1].find(" joined the game") >= 0: 
+                    msg = "joined the game"
+                    user = split_line[1].split(msg)[0].strip()
                     self.message_handler(time, user, msg, return_list)
 
-                elif split_line[1].find(" left the game.") >= 0:
-                    msg = " left the game."
-                    username = split_line[1].split(msg)
+                elif split_line[1].find(" left the game") >= 0:
+                    msg = "left the game"
+                    user = split_line[1].split(msg)[0].strip()
                     self.message_handler(time, user, msg, return_list)
 
         # Save DB and return
