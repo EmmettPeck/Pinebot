@@ -27,8 +27,10 @@ Will need to write a small datapack or interface with PineBot through rcon comma
 
 ## TO/DO
 
+- Move TO/DO to issue tracker
 - Chat-Link
 - Player activity presence/tracking [Logging on/off, who, when] chat channel presence
+- List command analytics function & info handling
 
 ### Discord Channel
 
@@ -57,9 +59,8 @@ Will need to write a small datapack or interface with PineBot through rcon comma
 
 ### Utils Cog
 
-- Server List Command
 - Purge x chats admin command
-- AddDockerID
+- AddMCServerDict
   - > Append dictionary -> Save -> Run load_mc_Channels
 
 - AddWhitelistRole command
