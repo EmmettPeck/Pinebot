@@ -13,14 +13,14 @@ def load_whitelist():
         role_Whitelist = json.load(read_file)
     return role_Whitelist
 
-# Using global variables because decorators can't use self.
-role_Whitelist = load_whitelist()
-
 class Utilities(commands.Cog):
 
     def __init__(self, bot):
         self.dockingPort=DockingPort()
         self.bot = bot
+
+    # Trying to use a static variable since decorators can't use self.
+    role_Whitelist = load_whitelist()
 
     #GetID
     @commands.command(name='getID',help='Returns current channel ID',brief='Returns channel ID')

@@ -9,14 +9,19 @@ import datetime
 
 class DockingPort():
 
+    # Define Static Vars
+    mc_Channels = []
+    fingerprint_DB = [] 
+
     def __init__(self):
-        self.load_mc_Channels()
-        self.load_fingerprintDB()
+        self.mc_Channels = self.load_mc_Channels()
+        self.fingerprint_DB = self.load_fingerprintDB()
+
 
     # Data Load/Saving
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
-            self.mc_Channels = json.load(read_file)
+            return json.load(read_file)
 
     def save_mc_Channels(self):
         # Overwrites json
@@ -26,7 +31,7 @@ class DockingPort():
     def load_fingerprintDB(self):
         """Loads the previous 100 message hashes"""
         with open(r"data/hashDump.json", 'r') as read_file:
-            self.fingerprintDB = json.load(read_file)
+            return json.load(read_file)
     
     def save_fingerprintDB(self):
         """Saves the previous 100 message hashes"""
