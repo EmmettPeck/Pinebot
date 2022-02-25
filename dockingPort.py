@@ -9,14 +9,9 @@ import datetime
 
 class DockingPort():
 
-    # Define Static Vars
-    mc_Channels = []
-    fingerprint_DB = [] 
-
     def __init__(self):
         self.mc_Channels = self.load_mc_Channels()
         self.fingerprint_DB = self.load_fingerprintDB()
-
 
     # Data Load/Saving
     def load_mc_Channels(self): 
