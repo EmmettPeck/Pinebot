@@ -11,9 +11,10 @@ class DockingPort():
 
     def __init__(self):
         self.mc_Channels = self.load_mc_Channels()
-        self.fingerprint_DB = self.load_fingerprintDB()
+        self.fingerprintDB = self.load_fingerprintDB()
 
     # Data Load/Saving
+    # --------------------------------------------------------------
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             return json.load(read_file)
@@ -33,11 +34,13 @@ class DockingPort():
         with open(r"data/hashDump.json", 'w') as write_file:
             json.dump(self.fingerprintDB, write_file)
     
+
+    # Functions
+    # --------------------------------------------------------------
     def message_handler(self, time, username, message, return_list):
         """Returns list of dictionaries if fingerprint not present in database"""
         
         # Print fancy message; Generate hash
-        print (f" --- Time:{time}, User:{username}, Msg:{message}")
         sha256hash = hashlib.sha256()
         sha256hash.update(f"{time}{username}{message}".encode('utf8'))
         hash_id = sha256hash.hexdigest()
@@ -47,6 +50,7 @@ class DockingPort():
         try:
             comparison = self.fingerprintDB.index(hash_int)
         except ValueError as v:
+            print (f" --- Time:{time}, User:{username}, Msg:{message}")
             self.fingerprintDB.insert(0, hash_int) # Insert into pos 0
 
             if len(self.fingerprintDB) > 100: # Pop elements over pos 100
@@ -85,7 +89,7 @@ class DockingPort():
         for channel in self.mc_Channels:
             if channelID == channel.get('channel_id'):
                 dockerName = channel.get('docker_name') 
-                resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
+                resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True).stdout.read()
                 resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                 break
 
