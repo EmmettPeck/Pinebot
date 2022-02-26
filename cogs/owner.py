@@ -7,6 +7,19 @@ class OwnerCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def cogs_reload(self, cogs):
+        """Returns true if successful; reloads cogs referenced in parameters"""
+        for cog in cogs:    
+            try:
+                self.bot.unload_extension(cog)
+            except Exception as e:
+                print("ERROR:Unload cogs_reload")
+                return False
+            else:
+                self.bot.load_extension(cog)
+
+        return True
+    
     # Add server
     @commands.command(name="addserver", hidden=True)
     @commands.is_owner()
@@ -19,14 +32,13 @@ class OwnerCog(commands.Cog):
         dockingPort.mc_Channels.append(sDict)
         dockingPort.save_mc_Channels()
 
-        # Reload Utils Cog
-        try:
-            self.bot.unload_extension("cogs.utils")
-        except Exception as e:
-            print("ERROR:Addserver Unload Utils")
-        else:
-            self.bot.load_extension("cogs.utils")
+        # Reload cogs using mc_Channels
+        if self.cogs_reload(["cogs.utils","cogs.social"]):
+            ctx.send(f"Server {sDict} Added Successfully")
             print(f"Server {sDict} Added Successfully")
+        else:
+            ctx.send("addserver Failed")
+            print("addserver Failed")
 
     #Remove server
     @commands.command(name="remserver", hidden=True)
@@ -39,14 +51,13 @@ class OwnerCog(commands.Cog):
         dockingPort.mc_Channels.pop(popID)
         dockingPort.save_mc_Channels()
 
-        # Reload Utils Cog
-        try:
-            self.bot.unload_extension("cogs.utils")
-        except Exception as e:
-            print("ERROR:remserver Unload Utils")
-        else:
-            self.bot.load_extension("cogs.utils")
+        # Reload cogs using mc_Channels
+        if self.cogs_reload(["cogs.utils","cogs.social"]):
+            ctx.send(f"Server {rDict} Removed Successfully")
             print(f"Server {rDict} Removed Successfully")
+        else:
+            ctx.send("addserver Failed")
+            print("addserver Failed")
 
 # Hidden means it won't show up on the default help.
     @commands.command(name='load', hidden=True)

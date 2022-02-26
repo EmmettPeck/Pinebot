@@ -13,7 +13,7 @@ def load_whitelist():
         role_Whitelist = json.load(read_file)
     return role_Whitelist
 
-# Using Global (In module)
+|# Using Global (In module)
 role_Whitelist = load_whitelist()
 
 class Utilities(commands.Cog):
@@ -23,7 +23,7 @@ class Utilities(commands.Cog):
         self.bot = bot
 
     #GetID
-    @commands.command(name='getID',help='Returns current channel ID',brief='Returns channel ID')
+    @commands.command(name='getID',help='Returns current channel ID',brief='Returns channel ID', hidden=True)
     async def getID(self, ctx):
         ''' Command which returns current channel ID'''
         await ctx.send(ctx.channel.id)
