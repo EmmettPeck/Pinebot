@@ -13,7 +13,7 @@ def load_whitelist():
         role_Whitelist = json.load(read_file)
     return role_Whitelist
 
-|# Using Global (In module)
+# Using Global (In module)
 role_Whitelist = load_whitelist()
 
 class Utilities(commands.Cog):

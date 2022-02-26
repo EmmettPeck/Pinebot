@@ -43,7 +43,7 @@ class OwnerCog(commands.Cog):
     #Remove server
     @commands.command(name="remserver", hidden=True)
     @commands.is_owner()
-    async def remserver(self, ctx, *):
+    async def remserver(self, ctx):
         #Search List for channel id, pop dict, then save
         dockingPort=DockingPort()
         rDict = next(item for item in dicts if item["channel_id"] == ctx.channel.id)

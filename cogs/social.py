@@ -1,5 +1,6 @@
 import discord
-from discord.ext import commands
+from discord.ext import tasks, commands
+from dockingPort import DockingPort
 
 class SocialCog(commands.Cog):
 
@@ -21,9 +22,9 @@ class SocialCog(commands.Cog):
     @tasks.loop(seconds = 25) #0.1 
     async def chat_post(self):
         # For each channel in channel list look for new msgs, then post
-        for channel in dockingPort.mc_Channels:
+        for channel in self.dockingPort.mc_Channels:
             cid = channnel.get("channel_id")
-            info = dockingPort.portRead(cid)
+            info = self.dockingPort.portRead(cid)
 
             # Print needed messages w/ portsend
 
@@ -34,12 +35,12 @@ class SocialCog(commands.Cog):
         if message.author == self.bot.user or message.content.startswith('>'):
             return
         # Check against channel ids
-        for channel in dockingPort.mc_Channels:
-            cid = channnel.get("channel_id")
+        for channel in self.dockingPort.mc_Channels:
+            cid = channel.get("channel_id")
             if message.channel.id == cid:
                 # Send message! Use colored messages?
-                msg = f"<{message.author.user.name}> {message.content}"
-                print(msg) # for testing purposes
+                msg = f"<{message.author.name}> {message.content}"
+                print(msg)
 
 def setup(bot):
     bot.add_cog(SocialCog(bot))        
