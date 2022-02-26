@@ -9,7 +9,7 @@ class SocialCog(commands.Cog):
         self.bot = bot
 
     # Hello!       
-    @commands.Cog.listener()
+    @commands.Cog.listener("on_message")
     async def on_hello(self, message): 
         '''Responds Hello! To messages that start with Hi, hi, Hello, hello'''
         if message.author == self.bot.user:
@@ -21,7 +21,7 @@ class SocialCog(commands.Cog):
     # Chat-Link
     # ------------------------------------------------------------------
     @tasks.loop(seconds = 1) # Accepts floats
-    async def chat_post(self):
+    async def pass_mc_message(self):
         # For each channel in channel list look for new msgs, then post
         for channel in self.dockingPort.mc_Channels:
             cid = channnel.get("channel_id")
@@ -29,8 +29,8 @@ class SocialCog(commands.Cog):
 
             # Print needed messages w/ portsend
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
+    @commands.Cog.listener("on_message")
+    async def on_disc_message(self, message):
         # Check to make sure it isn't a bot message or command
         if message.author == self.bot.user or message.content.startswith('>'):
             return
@@ -42,7 +42,7 @@ class SocialCog(commands.Cog):
                 
                 # Send message to mc server! Use colored messages?
                 msg = f"<{message.author.name}> {message.content}"
-                print(msg)
+                self.dockingPort.portSend(cid, f'tellraw @a {{"text":"{msg}","color":"green"}}')
 
 def setup(bot):
     bot.add_cog(SocialCog(bot))        
