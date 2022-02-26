@@ -18,8 +18,9 @@ class SocialCog(commands.Cog):
         if message.content.startswith('hello') | message.content.startswith('hi') | message.content.startswith('Hello')| message.content.startswith('Hi'):
             await message.channel.send('Hello!')
 
-# Chat-Link
-    @tasks.loop(seconds = 25) #0.1 
+    # Chat-Link
+    # ------------------------------------------------------------------
+    @tasks.loop(seconds = 1) # Accepts floats
     async def chat_post(self):
         # For each channel in channel list look for new msgs, then post
         for channel in self.dockingPort.mc_Channels:
@@ -28,17 +29,18 @@ class SocialCog(commands.Cog):
 
             # Print needed messages w/ portsend
 
-    #on message in any channel
     @commands.Cog.listener()
     async def on_message(self, message):
         # Check to make sure it isn't a bot message or command
         if message.author == self.bot.user or message.content.startswith('>'):
             return
+        
         # Check against channel ids
         for channel in self.dockingPort.mc_Channels:
             cid = channel.get("channel_id")
             if message.channel.id == cid:
-                # Send message! Use colored messages?
+                
+                # Send message to mc server! Use colored messages?
                 msg = f"<{message.author.name}> {message.content}"
                 print(msg)
 

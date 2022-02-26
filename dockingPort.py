@@ -64,7 +64,7 @@ class DockingPort():
 
                     # Command Execution Via Commandline through Docker
                     dockerName = channel.get('docker_name')
-                    resp_bytes = subprocess.Popen(f'docker exec {dockerName} rcon-cli /{command}', stdout=subprocess.PIPE, shell=True, executable="/bin/bash").stdout.read()
+                    resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
                     resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                     
                     # Logging
