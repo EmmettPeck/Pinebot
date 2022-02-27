@@ -63,9 +63,9 @@ class DockingPort():
             if len(self.fingerprintDB) > 100: # Pop elements over pos 100
                 self.fingerprintDB.pop(100)
 
-            # dict insertion to list
+            # dict append to end In=> 1, 2, 3, 4 gets ordered accordingly
             local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
-            return_list.insert(0, local_dict)
+            return_list.append(local_dict)
         return return_list
 
     # Command Send -> 
