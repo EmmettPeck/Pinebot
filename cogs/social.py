@@ -32,7 +32,7 @@ class Social(commands.Cog):
 
     # Chat-Link
     # ------------------------------------------------------------------
-    @tasks.loop(seconds=0.5) # Accepts floats
+    @tasks.loop(seconds=0.5)
     async def pass_mc_message(self):
         # For each channel in channel list look for new items, then post
         for mc_channel in self.dockingPort.mc_Channels:
@@ -48,12 +48,14 @@ class Social(commands.Cog):
                 # Message Type Sort
                 if(item.get("type") == MessageType.MSG):
                     out_str = f"```yaml\n<{user}> {msg}\n```"
-                else:
+                elif(item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE):
                     out_str = f"```fix\n{user} {msg}\n```"
                 await out_channel.send(out_str)
+
     @pass_mc_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 
+
 
     @commands.Cog.listener("on_message")
     async def on_disc_message(self, message):
@@ -68,7 +70,7 @@ class Social(commands.Cog):
                 
                 # Send message to mc server! Use colored messages?
                 item = f"<{message.author.name}> {message.content}"
-                self.dockingPort.portSend(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}')
+                self.dockingPort.portSend(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}',False)
 
 def setup(bot):
     bot.add_cog(Social(bot))        

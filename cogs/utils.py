@@ -35,7 +35,7 @@ class Utilities(commands.Cog):
         ''' Whitelists <args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
 
         # Check Roles agains role_Whitelist
-        response = self.dockingPort.portSend(ctx.channel.id, f"whitelist add {mess}")
+        response = self.dockingPort.portSend(ctx.channel.id, f"whitelist add {mess}",True)
         await ctx.send(response)
 
     @whitelist.error
@@ -50,7 +50,7 @@ class Utilities(commands.Cog):
     async def send(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
 
-        response = self.dockingPort.portSend(ctx.channel.id, mess)
+        response = self.dockingPort.portSend(ctx.channel.id, mess,True)
         await ctx.send(response)
 
     @send.error

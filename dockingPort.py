@@ -43,52 +43,59 @@ class DockingPort():
 
     # Functions
     # --------------------------------------------------------------
+    def hash_int(self, instr):
+        """ Print fancy message; Generate hash """
+        sha256hash = hashlib.sha256()
+        sha256hash.update(instr.encode('utf8'))
+        hash_id = sha256hash.hexdigest()
+        hash_ = int(hash_id,16)
+        return hash_
+
+    def unique_fingerprint(self, fingerprint):
+        """Compares hash to database, if unique returns true"""
+        
+        try:
+            comparison = self.fingerprintDB.index(fingerprint)
+        except ValueError as v:
+            self.fingerprintDB.insert(0, fingerprint)
+            # Pop elements over pos 100 to keep the list tidy
+            if len(self.fingerprintDB) > 100: 
+                self.fingerprintDB.pop(100)
+            return True
+        else:
+            return False
 
     def message_handler(self, time, username, message, MessageType, return_list):
-        """Returns list of dictionaries if fingerprint not present in database"""
+        """Returns list of new message dicts"""
         
-        # Print fancy message; Generate hash
-        sha256hash = hashlib.sha256()
-        sha256hash.update(f"{time}{username}{message}".encode('utf8'))
-        hash_id = sha256hash.hexdigest()
-        hash_int = int(hash_id,16)
-
-        # Compares Hash to database, if present does not insert dict into return_list
-        try:
-            comparison = self.fingerprintDB.index(hash_int)
-        except ValueError as v:
+        hash_ = self.hash_int(f"{time}{username}{message}")
+        # Adds 
+        if self.unique_fingerprint(hash_):
             print (f" --- Time:{time}, User:{username}, Msg:{message}")
-            self.fingerprintDB.insert(0, hash_int) # Insert into pos 0
-
-            if len(self.fingerprintDB) > 100: # Pop elements over pos 100
-                self.fingerprintDB.pop(100)
-
-            # dict append to end In=> 1, 2, 3, 4 gets ordered accordingly
             local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
             return_list.append(local_dict)
-        return return_list
 
-    # Command Send -> 
-    def portSend(self, channelID, command): # Sends a command to corresponding server ID. Returns a string output of command response.
-        for channel in self.mc_Channels: # Check all channels in list for channel ID, then execute if found.
+
+    def portSend(self, channelID, command, logging): 
+        """Sends command to corresponding server. Returns a str output of response."""
+        # Check all channels in list for channel ID, then execute through commandline if found. Otherwise returns error message
+        for channel in self.mc_Channels: 
                 if channelID == channel.get('channel_id'):
-                    # Single-Quote Filtering (Catches issue #9)
-                    filtered_command = command.replace("'", "'\\''")
+                    
+                    filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
 
-                    # Execution Via Commandline through Docker
                     dockerName = channel.get('docker_name')
                     resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{filtered_command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
                     resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                     
-                    # Logging
-                    print(f"\nSent command /{command} to {dockerName}")
-                    print(f'--- {resp_str}')
+                    if logging:
+                        print(f"\nSent command /{command} to {dockerName}")
+                        print(f' --- {resp_str}')
                     return resp_str
-        # CHANNEL NOT FOUND/WRONG CHANNEL MSG
         return "Channel Not Found. Use command only in 'Minecraft' text channels."
 
-    # In future migrated to using docker API, SO much better
-    def portRead(self, channelID):
+
+    def portRead(self, channelID): # Eventually migrate to docker API?
         """Checks past 10 messages of a channel, returns a list of dicts of messages to be sent (in order) to caller channel"""
 
         resp_str = ""
@@ -106,8 +113,8 @@ class DockingPort():
         for line in resp_str.split('\n'):
             split_line = line.split('] [Server thread/INFO]:')
             
-            if len(split_line) == 2: # Separate time from messages of interest; 1 Corresponds to 1 element, 2 to 2 elements
-                time = split_line[0].split('[',1)[1] # Save Time
+            if len(split_line) == 2: # Separate and save time from messages; 1 to 1 element, 2 to 2 elements
+                time = split_line[0].split('[',1)[1] 
 
                 # Message Detection using <{user}> {msg}
                 if '<' and '>' in split_line[1]:
@@ -126,12 +133,13 @@ class DockingPort():
                     user = split_line[1].split(msg)[0].strip()
                     self.message_handler(time, user, msg, MessageType.LEAVE,return_list)
 
+                # Death Message Detection
+
         # Save DB and return
         self.save_fingerprintDB()
         return return_list
                             
                     
-                        
 # PortRead test function 
 if __name__ == '__main__':
     dockingPort=DockingPort()
