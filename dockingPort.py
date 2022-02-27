@@ -43,6 +43,7 @@ class DockingPort():
 
     # Functions
     # --------------------------------------------------------------
+
     def message_handler(self, time, username, message, MessageType, return_list):
         """Returns list of dictionaries if fingerprint not present in database"""
         
@@ -71,10 +72,12 @@ class DockingPort():
     def portSend(self, channelID, command): # Sends a command to corresponding server ID. Returns a string output of command response.
         for channel in self.mc_Channels: # Check all channels in list for channel ID, then execute if found.
                 if channelID == channel.get('channel_id'):
+                    # Single-Quote Filtering (Catches issue #9)
+                    filtered_command = command.replace("'", "'\\''")
 
-                    # Command Execution Via Commandline through Docker
+                    # Execution Via Commandline through Docker
                     dockerName = channel.get('docker_name')
-                    resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
+                    resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{filtered_command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
                     resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                     
                     # Logging
