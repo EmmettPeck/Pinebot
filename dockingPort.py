@@ -6,6 +6,12 @@ import json
 import subprocess
 import hashlib
 import datetime
+from enum import Enum
+class MessageType(Enum):
+    MSG = 1
+    JOIN = 2
+    LEAVE = 3
+    DEATH = 4
 
 class DockingPort():
 
@@ -37,7 +43,7 @@ class DockingPort():
 
     # Functions
     # --------------------------------------------------------------
-    def message_handler(self, time, username, message, return_list):
+    def message_handler(self, time, username, message, MessageType, return_list):
         """Returns list of dictionaries if fingerprint not present in database"""
         
         # Print fancy message; Generate hash
@@ -57,7 +63,7 @@ class DockingPort():
                 self.fingerprintDB.pop(100)
 
             # dict insertion to list
-            local_dict = {"time":time, "username":username, "message": message}
+            local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
             return_list.insert(0, local_dict)
         return return_list
 
@@ -72,7 +78,7 @@ class DockingPort():
                     resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                     
                     # Logging
-                    print(f"Sent command /{command} to {dockerName}")
+                    print(f"\nSent command /{command} to {dockerName}")
                     print(f'--- {resp_str}')
                     return resp_str
         # CHANNEL NOT FOUND/WRONG CHANNEL MSG
@@ -104,18 +110,18 @@ class DockingPort():
                 if '<' and '>' in split_line[1]:
                     msg  = split_line[1].split('> ', 1)[1]
                     user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')] 
-                    self.message_handler(time, user, msg, return_list)
+                    self.message_handler(time, user, msg, MessageType.MSG, return_list)
 
                 # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
                 elif split_line[1].find(" joined the game") >= 0: 
                     msg = "joined the game"
                     user = split_line[1].split(msg)[0].strip()
-                    self.message_handler(time, user, msg, return_list)
+                    self.message_handler(time, user, msg, MessageType.JOIN,return_list)
 
                 elif split_line[1].find(" left the game") >= 0:
                     msg = "left the game"
                     user = split_line[1].split(msg)[0].strip()
-                    self.message_handler(time, user, msg, return_list)
+                    self.message_handler(time, user, msg, MessageType.LEAVE,return_list)
 
         # Save DB and return
         self.save_fingerprintDB()

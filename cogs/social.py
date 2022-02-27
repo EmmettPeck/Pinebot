@@ -2,6 +2,7 @@ import discord
 from discord.ext import tasks, commands
 
 from dockingPort import DockingPort
+from dockingPort import MessageType
 
 class SocialCog(commands.Cog):
 
@@ -43,12 +44,15 @@ class SocialCog(commands.Cog):
 
             # Print each message in msglist
             for item in message_list:
+                out_channel = self.bot.get_channel(cid)
                 user = item.get("username")
                 msg = item.get("message")
 
-                out_channel = self.bot.get_channel(cid)
-                out_str = f"``<{user}> {msg}``"
-                
+                # Message Type Sort
+                if(item.get("type") == MessageType.MSG):
+                    out_str = f"```yaml\n<{user}> {msg}\n```"
+                else:
+                    out_str = f"```fix\n{user} {msg}\n```"
                 await out_channel.send(out_str)
 
     @commands.Cog.listener("on_message")
