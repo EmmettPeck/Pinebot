@@ -152,7 +152,7 @@ class Connect4Game(Connect4Engine):
         return e
 
 
-class Connect4(commands.Cog, name='Connect4'):
+class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.waiting_games = dict()
@@ -277,4 +277,4 @@ class Connect4(commands.Cog, name='Connect4'):
 
 def setup(bot):
     """This is called when the cog is loaded via load_extension"""
-    bot.add_cog(Connect4(bot))
+    bot.add_cog(Games(bot))
