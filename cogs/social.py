@@ -35,7 +35,7 @@ class SocialCog(commands.Cog):
 
     # Chat-Link
     # ------------------------------------------------------------------
-    @tasks.loop(seconds=1) # Accepts floats
+    @tasks.loop(seconds=0.5) # Accepts floats
     async def pass_mc_message(self):
         # For each channel in channel list look for new items, then post
         for mc_channel in self.dockingPort.mc_Channels:
