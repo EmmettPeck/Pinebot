@@ -29,7 +29,7 @@ class Utilities(commands.Cog):
         await ctx.send(ctx.channel.id)
 
     #Whitelist
-    @commands.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {role_Whitelist} role.", brief="Whitelists <arg> player on the corresponding channel's server.")
+    @commands.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {role_Whitelist} role.", brief="Whitelist a player.")
     @commands.has_any_role(*role_Whitelist)
     async def whitelist(self, ctx, *, mess):
         ''' Whitelists <args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
@@ -45,7 +45,7 @@ class Utilities(commands.Cog):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
 
     #Send
-    @commands.command(name='send', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends <arg> command to the corresponding channel's server.")
+    @commands.command(name='send', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
     @has_permissions(administrator=True)
     async def send(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
@@ -59,7 +59,7 @@ class Utilities(commands.Cog):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
 
     #ServerList
-    @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", breif="Lists all servers running on pineserver.net")
+    @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", brief="Lists all pineserver.net servers")
     async def server_list(self, ctx):
         message = f"""``Server List``\n```Name    | IP                 | Description\n"""
         for dict in self.dockingPort.mc_Channels:
