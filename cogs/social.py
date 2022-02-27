@@ -4,7 +4,7 @@ from discord.ext import tasks, commands
 from dockingPort import DockingPort
 from dockingPort import MessageType
 
-class SocialCog(commands.Cog):
+class Social(commands.Cog):
 
     def __init__(self, bot):
         self.dockingPort=DockingPort()
@@ -16,6 +16,7 @@ class SocialCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         self.pass_mc_message.start()
+
 
     # Hello!       
     @commands.Cog.listener("on_message")
@@ -71,4 +72,4 @@ class SocialCog(commands.Cog):
                 self.dockingPort.portSend(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}')
 
 def setup(bot):
-    bot.add_cog(SocialCog(bot))        
+    bot.add_cog(Social(bot))        
