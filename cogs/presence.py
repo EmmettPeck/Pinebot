@@ -16,7 +16,7 @@ class Presence(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-
+        self.set_presence.start()
 
     def cog_unload(self):
         self.set_presence.cancel()
@@ -25,7 +25,6 @@ class Presence(commands.Cog):
     async def on_ready(self):
         print("----------------- PineBot -----------------")
         print(f'Logged in as: {self.bot.user.name} - {self.bot.user.id}\nVersion: {discord.__version__}\n')
-        self.set_presence.start()
         print('Successfully logged in and booted...\n')
     
     @tasks.loop(minutes = 1)
@@ -50,6 +49,8 @@ class Presence(commands.Cog):
             _status = discord.Status.online
 
         await self.bot.change_presence(status=_status, activity=_activity)
-
+    @set_presence.before_loop
+    async def before_set_presence(self):
+        await self.bot.wait_until_ready() 
 def setup(bot):
     bot.add_cog(Presence(bot))        

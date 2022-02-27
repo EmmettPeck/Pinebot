@@ -9,14 +9,10 @@ class Social(commands.Cog):
     def __init__(self, bot):
         self.dockingPort=DockingPort()
         self.bot = bot
+        self.pass_mc_message.start()
 
     def cog_unload(self):
         self.pass_mc_message.cancel()
-
-    @commands.Cog.listener()
-    async def on_ready(self):
-        self.pass_mc_message.start()
-
 
     # Hello!       
     @commands.Cog.listener("on_message")
@@ -55,6 +51,9 @@ class Social(commands.Cog):
                 else:
                     out_str = f"```fix\n{user} {msg}\n```"
                 await out_channel.send(out_str)
+    @pass_mc_message.before_loop
+    async def before_pass_mc_message(self):
+        await self.bot.wait_until_ready() 
 
     @commands.Cog.listener("on_message")
     async def on_disc_message(self, message):
