@@ -68,7 +68,7 @@ class SocialCog(commands.Cog):
                 
                 # Send message to mc server! Use colored messages?
                 item = f"<{message.author.name}> {message.content}"
-                self.dockingPort.portSend(cid, f'tellraw @a {{"text":"{item}","color":"green"}}')
+                self.dockingPort.portSend(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}')
 
 def setup(bot):
     bot.add_cog(SocialCog(bot))        
