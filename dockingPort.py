@@ -7,6 +7,7 @@ import subprocess
 import hashlib
 import datetime
 from enum import Enum
+
 class MessageType(Enum):
     MSG = 1
     JOIN = 2
@@ -19,8 +20,6 @@ class DockingPort():
         self.mc_Channels = self.load_mc_Channels()
         self.fingerprintDB = self.load_fingerprintDB()
 
-    # Data Load/Saving
-    # --------------------------------------------------------------
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             return json.load(read_file)
@@ -40,80 +39,35 @@ class DockingPort():
         with open(r"data/hashDump.json", 'w') as write_file:
             json.dump(self.fingerprintDB, write_file)
     
-
-    # Functions
-    # --------------------------------------------------------------
-    def hash_int(self, instr):
-        """ Print fancy message; Generate hash """
+    def get_hash_int(self, instr):
+        """Returns a hashed int of provided string"""
         sha256hash = hashlib.sha256()
         sha256hash.update(instr.encode('utf8'))
         hash_id = sha256hash.hexdigest()
         hash_ = int(hash_id,16)
         return hash_
 
-    def unique_fingerprint(self, fingerprint):
-        """Compares hash to database, if unique returns true"""
-        
+    def is_unique_fingerprint(self, fingerprint, database_list):
+        """Compares hash to provided database_list"""
         try:
-            comparison = self.fingerprintDB.index(fingerprint)
+            comparison = database_list.index(fingerprint)
         except ValueError as v:
-            self.fingerprintDB.insert(0, fingerprint)
-            # Pop elements over pos 100 to keep the list tidy
-            if len(self.fingerprintDB) > 100: 
-                self.fingerprintDB.pop(100)
+            database_list.insert(0, fingerprint)
+            # Pop elements over pos 100 to keep the list small
+            if len(database_list) > 100: 
+                database_list.pop(100)
             return True
         else:
             return False
 
-    def message_handler(self, time, username, message, MessageType, return_list):
-        """Returns list of new message dicts"""
-        
-        hash_ = self.hash_int(f"{time}{username}{message}")
-        # Adds 
-        if self.unique_fingerprint(hash_):
-            print (f" --- Time:{time}, User:{username}, Msg:{message}")
-            local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
-            return_list.append(local_dict)
-
-
-    def portSend(self, channelID, command, logging): 
-        """Sends command to corresponding server. Returns a str output of response."""
-        # Check all channels in list for channel ID, then execute through commandline if found. Otherwise returns error message
-        for channel in self.mc_Channels: 
-                if channelID == channel.get('channel_id'):
-                    
-                    filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
-
-                    dockerName = channel.get('docker_name')
-                    resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{filtered_command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
-                    resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
-                    
-                    if logging:
-                        print(f"\nSent command /{command} to {dockerName}")
-                        print(f' --- {resp_str}')
-                    return resp_str
-        return "Channel Not Found. Use command only in 'Minecraft' text channels."
-
-
-    def portRead(self, channelID): # Eventually migrate to docker API?
-        """Checks past 10 messages of a channel, returns a list of dicts of messages to be sent (in order) to caller channel"""
-
-        resp_str = ""
-        return_list = []
-
-        # Filters for channel, then converts tail 10 of the logs to a string
-        for channel in self.mc_Channels:
-            if channelID == channel.get('channel_id'):
-                dockerName = channel.get('docker_name') 
-                resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True).stdout.read()
-                resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
-                break
-
-        # Seperate lines and filter for '] [Server thread/INFO]:'
+    def filter_logs_mc_1_18(self, resp_str)
+    """Filters string by significant lines to playeractions in Minecraft 1.18"""
+    # Filter line by line for '] [Server thread/INFO]:'
         for line in resp_str.split('\n'):
             split_line = line.split('] [Server thread/INFO]:')
             
-            if len(split_line) == 2: # Separate and save time from messages; 1 to 1 element, 2 to 2 elements
+            # Separate and save time from messages
+            if len(split_line) == 2: 
                 time = split_line[0].split('[',1)[1] 
 
                 # Message Detection using <{user}> {msg}
@@ -138,6 +92,48 @@ class DockingPort():
         # Save DB and return
         self.save_fingerprintDB()
         return return_list
+
+    def message_handler(self, time, username, message, MessageType, return_list):
+        """Adds unique messages to return_list as dicts"""
+        hash_ = self.get_hash_int(f"{time}{username}{message}")
+
+        if self.is_unique_fingerprint(hash_, self.fingerprintDB):
+            print (f" --- Time:{time}, User:{username}, Msg:{message}")
+            local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
+            return_list.append(local_dict)
+
+
+    def portSend(self, channelID, command, logging=False): 
+        """Sends command to corresponding server. Returns a str output of response."""
+        for channel in self.mc_Channels: 
+                if channelID == channel.get('channel_id'):
+                    dockerName = channel.get('docker_name')
+                    filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
+                    resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{filtered_command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
+                    resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                    
+                    if logging:
+                        print(f"\nSent command /{command} to {dockerName}")
+                        print(f' --- {resp_str}')
+                    return resp_str
+        return "Channel Not Found. Use command only in 'Minecraft' text channels."
+
+
+    def portRead(self, channelID):
+        """Checks past 10 messages of a channel, returns a list of dicts of messages to be sent (in order) to caller channel"""
+
+        resp_str = ""
+        return_list = []
+
+        # Filters for channel, then converts tail 10 of the logs to a string
+        for channel in self.mc_Channels:
+            if channelID == channel.get('channel_id'):
+                dockerName = channel.get('docker_name') 
+                resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True).stdout.read()
+                resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                break
+
+        return filter_logs_mc_1_18(resp_str)
                             
                     
 # PortRead test function 

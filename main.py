@@ -6,7 +6,6 @@
 import discord
 from discord.ext import commands
 import sys, traceback
-
 import os
 import json
 from dotenv import load_dotenv
