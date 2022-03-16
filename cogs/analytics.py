@@ -15,12 +15,32 @@ class Analytics():
             pass
         else:
             self.create_playerstats()
+
+    def str_to_dt(self, dt_str):
+        """Converts string to datetime format"""
+        return datetime.strptime(dt_str, '%d/%m/%y %H:%M:%S')
     
-    def get_player_UUID(self, username):
+    def get_player_uuid(self, username):
         """Get player UUID from username"""
         converter = UsernameToUUID(username)
         uuid = converter.get_uuid()
         return uuid
+    
+    def get_uuid_index(self, UUID):
+        """Returns index of specific UUID in playerstats"""
+        for D in self.playerstats: #Looks at each dict
+                if uuid == D["UUID"]:  #If dict UUID value matches UUID
+                    return self.playerstats.index(D) #Sets index to index of dict
+        return None
+
+    def get_server_index(self, serverName)
+        """Returns index of specific serverName in playerstats"""
+        uuid_index = get_uuid_index("")
+
+        for D in self.playerstats[uuid_index]["Servers"]:
+            if str(serverName) in D:
+                return self.playerstats[uuid_index]["Servers"].index(D)
+        return None
 
     def load_playerstats(self):
         """Load playerstats from playerstats.json"""
@@ -60,32 +80,31 @@ class Analytics():
 
     def add_player(self, username):
         """Adds player to json, copying servers from empty"""
-        UUID = self.get_player_UUID(username)
+        uuid = self.get_player_uuid(username)
 
-        for D in self.playerstats:
-            if UUID == D["UUID"]:
-                print(f"ERROR: add_player {username} already exists.")
-                return
-            elif D["UUID"] == "":
-                uuid_index = self.playerstats.index(D) #Example player pos
+        if get_uuid_index(uuid):
+            print(f"ERROR: add_player {username} already exists.")
+        
+        totem_index = get_uuid_index("")
 
         # Create player
-        self.playerstats.append({"UUID":UUID,"Servers":[]})
+        self.playerstats.append({"UUID":uuid,"Servers":[]})
 
         # Copy servers from empty to new
         server_list = []
         tag_list = []
-        for server in self.playerstats[uuid_index]["Servers"]:
+        for server in self.playerstats[totem_index]["Servers"]:
             server_list.extend(server.keys())
-
+            # Get tags from server
             for tags in server.values():
                 current_tags = tags.keys()
-
+                # Filter out tags already present
                 for tag in current_tags:
                     if tag not in tag_list:
                         tag_list.append(tag)
 
-
+        
+        # Add tags to servers
         for dictname in server_list:
             sname = {f'{dictname}':{}}
             self.playerstats[-1]["Servers"].append(sname)
@@ -96,61 +115,102 @@ class Analytics():
         self.save_playerstats()
             
 
-    def add_connect_event(self,username,serverName,Online):
+    def add_connect_event(self,username,serverName,online):
         '''Adds Join/Leave event to UUID by ServerName'''
-        UUID = self.get_player_UUID(username)
+        uuid = self.get_player_uuid(username)
         try:
             Time = datetime.now()
             
-            for D in self.playerstats: #Looks at each dict
-                if UUID == D["UUID"]:  #If dict UUID value matches UUID
-                    uuid_index = self.playerstats.index(D) #Sets index to index of dict
-                    break
+            uuid_index = get_uuid_index(uuid)
 
-            for D in self.playerstats[uuid_index]["Servers"]:
-                #print(D)
-                if str(serverName) in D:
-                    server_index = self.playerstats[uuid_index]["Servers"].index(D)
-                    break
+            if uuid_index: 
+                server_index = get_server_index(serverName)
+
             
-            if Online:
+            if online:
                 self.playerstats[uuid_index]["Servers"][server_index][str(serverName)]["Joins"].append(str(Time))
             else:
                 self.playerstats[uuid_index]["Servers"][server_index][str(serverName)]["Leaves"].append(str(Time))
         except ValueError:
-            print(f'ValueError: "{UUID}" not a valid UUID.')
+            print(f'ValueError: "{uuid}" not a valid UUID.')
         except UnboundLocalError:
             print(f'UnboundLocalError: "{serverName}" not a valid server.') #Also called when invalid UUID due to fallthrough
         else:
             self.save_playerstats()
-        
-    def false_join(self, username, time):
+    
+    
+    def false_join(self, uuid_index):
         """Handles a false join message"""
 
-        # Check if most recent is a join, and if player is on server, if so, pass
+        # Check if most recent is a join; if player is on server, pass
 
         # If not, remove previous join message
     
-    def false_leave(self, username, time):
+    def false_leave(self, uuid_index):
         """Handles a false leave message"""  
 
         # If most recent is a leave and second most recent is a leave, remove most recent leave.
+        # If most recent is a join and second most recent is a join and player is online, 
+        #    remove second most recent join, otherwise remove first and call falsejoin
         # Check if player is on server, if so, continue
 
         # Remove most recent leave message
+
     
-    def update_playerstats_playtime(self):
-        """Computes and updates playtimes from playerstats"""
-        # edits self.playtime
+    def calculate_playtime(self, leaveList, joinList, uuid_index):
+        """Computes playtimes from list of leave and join dt"""
+        total = None
+        for index in range(len(joinList)):
+            total += (leaveList[index]- joinList[index])
 
-    def get_playtime(self, username):
-        """Gets playtime from playerstats"""
+        if len(joinList) == len(leaveList) + 1:
+            false_join(uuid_index)
+            now = time.time()
+            total += (now - joinList[index])
+        elif len(joinList) > len(leaveList) + 1:
+            false_leave(uuid_index)
 
-        # Returns a playtime value of a certain player
-        # Playtime compute
-        # Return playtime of player UUID
+        return total        
 
-    # playtime command
+    def update_playtime(self, player, serverName='Total'):
+        """Updates playerstats playtime"""   
+        uuid = self.get_player_uuid(player)
+        uuid_index = get_uuid_index(uuid)
+
+        if serverName == 'Total':
+            pinetotal = None
+            for server in self.playerstats[uuid_index]["Servers"]:
+                playt = get_playtime(uuid_index, server.keys())
+                pinetotal += playt
+
+                self.playerstats[uuid_index]["Servers"][server.keys()]["Total Playtime"] = str(playt)
+                self.playerstats[uuid_index]["Servers"][server.keys()]["Last Computed"] = str(time.time())
+            return pinetotal
+            
+        else:
+            playt = get_playtime(uuid_index, serverName)
+            self.playerstats[uuid_index]["Servers"][serverName]["Total Playtime"] = str(playt)
+            self.playerstats[uuid_index]["Servers"][serverName]["Last Computed"] = str(time.time())
+            return playt
+
+    def get_playtime(self, uuid_index, server):
+        """Returns playtime of server playerstats"""
+
+        server_index = get_server_index(server)
+        if server_index:
+            # break joins into dt list
+            joinList = []
+            for join in self.playerstats[uuid_index]["Servers"][server_index]["Joins"]:
+                joinList.append(self.str_to_dt(join))
+            
+            # break leaves into dt list
+            leaveList = []
+            for leave in self.playerstats[uuid_index]["Servers"][server_index]["Leaves"]:
+                leaveList.append(self.str_to_dt(leave))
+
+            return self.calculate_playtime(joinList, leaveList, uuid_index)
+        else:
+            return None
 
 # Test function
 if __name__ == '__main__':
