@@ -35,7 +35,10 @@ class Utilities(commands.Cog):
 
         # Check Roles agains role_Whitelist
         response = self.dockingPort.portSend(ctx.channel.id, f"whitelist add {mess}",True)
-        await ctx.send(response)
+        if response:
+            await ctx.send(response)
+        else:
+            await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
 
     @whitelist.error
     async def whitelist_error(self, error, ctx):
@@ -50,7 +53,11 @@ class Utilities(commands.Cog):
         ''' Sends <args> as /<args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
 
         response = self.dockingPort.portSend(ctx.channel.id, mess,True)
-        await ctx.send(response)
+        if response:
+            await ctx.send(response)
+        else:
+            await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
+
 
     @send.error
     async def send_error(self, error, ctx):

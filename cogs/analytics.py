@@ -6,6 +6,7 @@ from datetime import datetime
 
 sys.path.append("../Pinebot")
 from username_to_uuid import UsernameToUUID
+from dockingPort import DockingPort
 
 class Analytics():
 
@@ -125,7 +126,6 @@ class Analytics():
 
             if uuid_index: 
                 server_index = get_server_index(serverName)
-
             
             if online:
                 self.playerstats[uuid_index]["Servers"][server_index][str(serverName)]["Joins"].append(str(Time))
@@ -137,38 +137,79 @@ class Analytics():
             print(f'UnboundLocalError: "{serverName}" not a valid server.') #Also called when invalid UUID due to fallthrough
         else:
             self.save_playerstats()
-    
-    
-    def false_join(self, uuid_index):
-        """Handles a false join message"""
 
-        # Check if most recent is a join; if player is on server, pass
+    def get_player_list(self, serverName):
+        """"Returns a list of players currently online"""
+        port = DockingPort()
 
-        # If not, remove previous join message
+        response = None
+        # Match servername to channel ID, then get list 
+        for server in port.mc_Channels:
+            if serverName == server['name']:
+                response = port.portSend(server['id'], "list")
+                print(response) # Test, then filter users out of. 
+
+        if response:
+            player_list = []
+            # Filter playerlist based off response syntax
+            return player_list
+
+        return None
+
+    def is_player_online(self, uuid_index, serverName):
+        """Returns true if player is on server"""
+
+        player_list = get_player_list(serverName)
+        if player_list:
+            for player in player_list: 
+                if get_uuid(player) == self.playerstats[uuid_index]["UUID"]:
+                    print (f"is_player_online: {player} is online {serverName}")
+                    return True
+            return False
+        return None
     
-    def false_leave(self, uuid_index):
-        """Handles a false leave message"""  
+    def false_join(self, leaveList, joinList, uuid_index, serverName):
+        """Handles a false/missing join message"""
+        online = self.is_player_online(uuid_index, serverName)
 
-        # If most recent is a leave and second most recent is a leave, remove most recent leave.
+        # Check if most recent is a join and player is offline
+        if joinList[-1] > leaveList[-1] and not online:
+            # Remove previous join message
+
+        
+        # Check if most recent is a leave and player is online
+        if leaveList[-1] > joinList[-1] and online:
+            # Add join at time of discovery
+
+
+    
+    def false_leave(self, leaveList, joinList, uuid_index, serverName):
+        """Handles a false/missing leave message"""  
+        online = self.is_player_online(uuid_index, serverName)
+
+        # If most recent is a leave and second most recent is a leave and the player is not online
+        if leaveList[-1] > joinList[-1] and leaveList[-2] > joinList[-1] and not online:
+            # Remove most recent leave
+
         # If most recent is a join and second most recent is a join and player is online, 
-        #    remove second most recent join, otherwise remove first and call falsejoin
-        # Check if player is on server, if so, continue
-
-        # Remove most recent leave message
-
+        if joinList[-1] > leaveList[-1] and joinList[-2] > leaveList[-1]:
+            if online:
+                # Remove second most recent join
+            else:
+                # Otherwise remove first and call falsejoin
     
-    def calculate_playtime(self, leaveList, joinList, uuid_index):
+    def calculate_playtime(self, leaveList, joinList, uuid_index, serverName):
         """Computes playtimes from list of leave and join dt"""
         total = None
         for index in range(len(joinList)):
             total += (leaveList[index]- joinList[index])
 
         if len(joinList) == len(leaveList) + 1:
-            false_join(uuid_index)
+            false_join(leaveList, joinList, uuid_index, serverName)
             now = time.time()
             total += (now - joinList[index])
         elif len(joinList) > len(leaveList) + 1:
-            false_leave(uuid_index)
+            false_leave(leaveList, joinList, uuid_index, serverName)
 
         return total        
 
@@ -177,26 +218,29 @@ class Analytics():
         uuid = self.get_player_uuid(player)
         uuid_index = get_uuid_index(uuid)
 
-        if serverName == 'Total':
-            pinetotal = None
-            for server in self.playerstats[uuid_index]["Servers"]:
-                playt = get_playtime(uuid_index, server.keys())
-                pinetotal += playt
+        if uuid_index:
+            if serverName == 'Total':
+                pinetotal = None
+                for server in self.playerstats[uuid_index]["Servers"]:
+                    playt = get_playtime(uuid_index, server.keys())
+                    pinetotal += playt
 
-                self.playerstats[uuid_index]["Servers"][server.keys()]["Total Playtime"] = str(playt)
-                self.playerstats[uuid_index]["Servers"][server.keys()]["Last Computed"] = str(time.time())
-            return pinetotal
-            
-        else:
-            playt = get_playtime(uuid_index, serverName)
-            self.playerstats[uuid_index]["Servers"][serverName]["Total Playtime"] = str(playt)
-            self.playerstats[uuid_index]["Servers"][serverName]["Last Computed"] = str(time.time())
-            return playt
+                    self.playerstats[uuid_index]["Servers"][server.keys()]["Total Playtime"] = str(playt)
+                    self.playerstats[uuid_index]["Servers"][server.keys()]["Last Computed"] = str(time.time())
+                return pinetotal
+                
+            else:
+                playt = get_playtime(uuid_index, serverName)
+                self.playerstats[uuid_index]["Servers"][serverName]["Total Playtime"] = str(playt)
+                self.playerstats[uuid_index]["Servers"][serverName]["Last Computed"] = str(time.time())
+                return playt
 
-    def get_playtime(self, uuid_index, server):
+        return None
+
+    def get_playtime(self, uuid_index, serverName):
         """Returns playtime of server playerstats"""
 
-        server_index = get_server_index(server)
+        server_index = get_server_index(serverName)
         if server_index:
             # break joins into dt list
             joinList = []
@@ -208,7 +252,7 @@ class Analytics():
             for leave in self.playerstats[uuid_index]["Servers"][server_index]["Leaves"]:
                 leaveList.append(self.str_to_dt(leave))
 
-            return self.calculate_playtime(joinList, leaveList, uuid_index)
+            return self.calculate_playtime(joinList, leaveList, uuid_index, serverName)
         else:
             return None
 

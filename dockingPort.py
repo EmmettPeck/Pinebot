@@ -27,7 +27,7 @@ class DockingPort():
     def save_mc_Channels(self):
         # Overwrites json
         with open(r"data/mc_Channels.json", 'w') as write_file:
-            json.dump(self.mc_Channels,write_file)
+            json.dump(self.mc_Channels, write_file, indent = 2)
 
     def load_fingerprintDB(self):
         """Loads the previous 100 message hashes"""
@@ -37,7 +37,7 @@ class DockingPort():
     def save_fingerprintDB(self):
         """Saves the previous 100 message hashes"""
         with open(r"data/hashDump.json", 'w') as write_file:
-            json.dump(self.fingerprintDB, write_file)
+            json.dump(self.fingerprintDB, write_file, indent = 2)
     
     def get_hash_int(self, instr):
         """Returns a hashed int of provided string"""
@@ -116,7 +116,7 @@ class DockingPort():
                         print(f"\nSent command /{command} to {dockerName}")
                         print(f' --- {resp_str}')
                     return resp_str
-        return "Channel Not Found. Use command only in 'Minecraft' text channels."
+        return None
 
 
     def portRead(self, channelID):
