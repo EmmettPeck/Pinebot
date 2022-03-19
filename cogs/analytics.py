@@ -231,59 +231,62 @@ class Analytics():
 
         # If there's 1 more join than leaves
         if len(joinList) == len(leaveList) + 1:
-            false_join(leaveList, joinList, uuid_index, serverName)
+            self.check_false_join(leaveList, joinList, uuid_index, serverName)
             now = time.time()
             total += (now - joinList[index])
 
         # If there are 2 more joins then leaves
         elif len(joinList) > len(leaveList) + 1:
-            false_leave(leaveList, joinList, uuid_index, serverName)
+            self.check_false_leave(leaveList, joinList, uuid_index, serverName)
 
         # If there are more leaves than joins
         elif len(leaveList) > len(joinList):
-
+            self.check_false_leave(leaveList, joinList, uuid_index, serverName)
 
         return total  
 
-    def false_join(self, leaveList, joinList, uuid_index, serverName, online = self.is_player_online(uuid_index, serverName)):
+    def check_false_join(self, leaveList, joinList, uuid_index, serverName, online = self.is_player_online(uuid_index, serverName)):
         """Handles a false/missing join message"""
 
-        # Check if most recent is a join and player is offline
+        # Check if most recent is a join and player is offline [Extra Join]
         if joinList[-1] > leaveList[-1] and not online:
             # Remove previous join message
             self.playerstats[uuid_index]["Servers"][serverName]["Joins"].pop()
 
-        # Check if most recent is a leave and player is online
+        # Check if most recent is a leave and player is online [Missing Join]
         elif leaveList[-1] > joinList[-1] and online:
             # Add join at time of discovery
             self.playerstats[uuid_index]["Servers"][serverName]["Joins"].append(str(time.time()))
-
-
     
-    def false_leave(self, leaveList, joinList, uuid_index, serverName):
+    def check_false_leave(self, leaveList, joinList, uuid_index, serverName):
         """Handles a false/missing leave message"""  
         online = self.is_player_online(uuid_index, serverName)
 
-        # If the first leave is before the first join
-            # Remove first leave
-
-        # If most recent is a leave and second most recent is a leave and the player is not online
+        # If first leave is before first join, removes. [Extra Leave]
+        try:
+            if leaveList[0] < joinList[0]:
+            self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop(0)
+        except IndexError:
+            self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop(0)
+        
+        # If two most recent are leaves and the player is not online [Extra Leave]
         if leaveList[-1] > joinList[-1] and leaveList[-2] > joinList[-1]:
-                # Remove most recent leave
-                self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop()
+            # Remove most recent leave
+            self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop()
             if online: 
-                self.false_join(leaveList, joinList, uuid_index, serverName, online)                
+                # Calls check_false_join, adding join at time discovered
+                self.check_false_join(leaveList, joinList, uuid_index, serverName, online)                
 
-        # If most recent is a join and second most recent is a join and player is online, 
+        # If two most recent are joins and player is online [Missing Leave] 
         elif joinList[-1] > leaveList[-1] and joinList[-2] > leaveList[-1]:
             if online:
                 # Remove second most recent join
                 self.playerstats[uuid_index]["Servers"][serverName]["Joins"].pop(-2)
 
             else:
-                # Otherwise remove first and call falsejoin
+                # Otherwise remove first, falsejoin 
                 self.playerstats[uuid_index]["Servers"][serverName]["Joins"].pop()
-                self.false_join(leaveList, joinList, uuid_index, serverName, online)
+                self.check_false_join(leaveList, joinList, uuid_index, serverName, online)
     
      
 
