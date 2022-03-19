@@ -7,6 +7,11 @@ import subprocess
 import hashlib
 import datetime
 from enum import Enum
+import docker
+
+from fingerprints import FingerPrints
+
+client = docker.from_env()
 
 class MessageType(Enum):
     MSG = 1
@@ -17,8 +22,8 @@ class MessageType(Enum):
 class DockingPort():
 
     def __init__(self):
+        self.fp = finger
         self.mc_Channels = self.load_mc_Channels()
-        self.fingerprintDB = self.load_fingerprintDB()
 
     def load_mc_Channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
@@ -28,37 +33,6 @@ class DockingPort():
         # Overwrites json
         with open(r"data/mc_Channels.json", 'w') as write_file:
             json.dump(self.mc_Channels, write_file, indent = 2)
-
-    def load_fingerprintDB(self):
-        """Loads the previous 100 message hashes"""
-        with open(r"data/hashDump.json", 'r') as read_file:
-            return json.load(read_file)
-    
-    def save_fingerprintDB(self):
-        """Saves the previous 100 message hashes"""
-        with open(r"data/hashDump.json", 'w') as write_file:
-            json.dump(self.fingerprintDB, write_file, indent = 2)
-    
-    def get_hash_int(self, instr):
-        """Returns a hashed int of provided string"""
-        sha256hash = hashlib.sha256()
-        sha256hash.update(instr.encode('utf8'))
-        hash_id = sha256hash.hexdigest()
-        hash_ = int(hash_id,16)
-        return hash_
-
-    def is_unique_fingerprint(self, fingerprint, database_list):
-        """Compares hash to provided database_list"""
-        try:
-            comparison = database_list.index(fingerprint)
-        except ValueError as v:
-            database_list.insert(0, fingerprint)
-            # Pop elements over pos 100 to keep the list small
-            if len(database_list) > 100: 
-                database_list.pop(100)
-            return True
-        else:
-            return False
 
     def filter_logs_mc_1_18(self, resp_str)
     """Filters string by significant lines to playeractions in Minecraft 1.18"""
@@ -90,14 +64,14 @@ class DockingPort():
                 # Death Message Detection
 
         # Save DB and return
-        self.save_fingerprintDB()
+        self.fp.save_fingerprintDB()
         return return_list
 
     def message_handler(self, time, username, message, MessageType, return_list):
         """Adds unique messages to return_list as dicts"""
-        hash_ = self.get_hash_int(f"{time}{username}{message}")
+        hash_ = self.fp.get_hash_int(f"{time}{username}{message}")
 
-        if self.is_unique_fingerprint(hash_, self.fingerprintDB):
+        if self.fp.is_unique_fingerprint(hash_, self.fingerprintDB):
             print (f" --- Time:{time}, User:{username}, Msg:{message}")
             local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
             return_list.append(local_dict)
@@ -120,11 +94,9 @@ class DockingPort():
 
 
     def portRead(self, channelID):
-        """Checks past 10 messages of a channel, returns a list of dicts of messages to be sent (in order) to caller channel"""
+        """Awaits text in streamed dockerlogs, sends parsed message to chat_link"""
 
-        resp_str = ""
         return_list = []
-
         # Filters for channel, then converts tail 10 of the logs to a string
         for channel in self.mc_Channels:
             if channelID == channel.get('channel_id'):
@@ -132,10 +104,9 @@ class DockingPort():
                 resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True).stdout.read()
                 resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                 break
-
         return filter_logs_mc_1_18(resp_str)
                             
-                    
+
 # PortRead test function 
 if __name__ == '__main__':
     dockingPort=DockingPort()
