@@ -1,3 +1,6 @@
+import json
+import hashlib
+
 class FingerPrints:
 
     def __init__(self):

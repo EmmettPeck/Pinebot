@@ -1,7 +1,11 @@
+from discord.ext import commands
+from dockingPort import DockingPort
+
 class Social(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.dockingPort = DockingPort()
 
     # Hello!       
     @commands.Cog.listener("on_message")

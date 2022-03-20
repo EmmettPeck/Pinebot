@@ -3,7 +3,7 @@ import discord
 from discord.ext import tasks, commands
 
 from dockingPort import DockingPort
-from dockingPort import MessageType
+from messages import MessageType
 
 class ChatLink(commands.Cog):
 
