@@ -48,18 +48,18 @@ class DockingPort():
                 if '<' and '>' in split_line[1]:
                     msg  = split_line[1].split('> ', 1)[1]
                     user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')] 
-                    self.message_handler(time, user, msg, MessageType.MSG, return_list)
+                    self.get_unique_msg_dicts(time, user, msg, MessageType.MSG, return_list)
 
                 # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
                 elif split_line[1].find(" joined the game") >= 0: 
                     msg = "joined the game"
                     user = split_line[1].split(msg)[0].strip()
-                    self.message_handler(time, user, msg, MessageType.JOIN,return_list)
+                    self.get_unique_msg_dicts(time, user, msg, MessageType.JOIN,return_list)
 
                 elif split_line[1].find(" left the game") >= 0:
                     msg = "left the game"
                     user = split_line[1].split(msg)[0].strip()
-                    self.message_handler(time, user, msg, MessageType.LEAVE,return_list)
+                    self.get_unique_msg_dicts(time, user, msg, MessageType.LEAVE,return_list)
 
                 # Death Message Detection
 
@@ -67,11 +67,11 @@ class DockingPort():
         self.fp.save_fingerprintDB()
         return return_list
 
-    def message_handler(self, time, username, message, MessageType, return_list):
+    def get_unique_msg_dicts(self, time, username, message, MessageType, return_list):
         """Adds unique messages to return_list as dicts"""
         hash_ = self.fp.get_hash_int(f"{time}{username}{message}")
 
-        if self.fp.is_unique_fingerprint(hash_, self.fingerprintDB):
+        if self.fp.is_unique_fingerprint(hash_, self.fp.fingerprintDB):
             print (f" --- Time:{time}, User:{username}, Msg:{message}")
             local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
             return_list.append(local_dict)
