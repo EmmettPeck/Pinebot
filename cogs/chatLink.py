@@ -35,6 +35,8 @@ class ChatLink(commands.Cog):
                     out_str = f"```yaml\n<{user}> {msg}\n```"
                 elif(item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE):
                     out_str = f"```fix\n{user} {msg}\n```"
+                elif item.get("type") == MessageType.DEATH:
+                    out_str = f"```\n{user} {msg}\n```"
                 await out_channel.send(out_str)
 
     @pass_mc_message.before_loop
