@@ -33,7 +33,7 @@ class OwnerCog(commands.Cog):
         dockingPort.save_mc_Channels()
 
         # Reload cogs using mc_Channels
-        if self.cogs_reload(["cogs.utils","cogs.social"]):
+        if self.cogs_reload(["cogs.utils","cogs.social","cogs.chatLink"]):
             await ctx.send(f"Server {sDict} Added Successfully")
             print(f"Server {sDict} Added Successfully")
         else:
