@@ -211,7 +211,7 @@ class Analytics():
     def update_playtime(self, uuid_index, serverName, playt):
         """Updates playtime and last computed of player by server"""
         self.playerstats[uuid_index]["Servers"][serverName]["Total Playtime"] = str(playt)
-        self.playerstats[uuid_index]["Servers"][serverName]["Last Computed"] = str(time.time())
+        self.playerstats[uuid_index]["Servers"][serverName]["Last Computed"] = str(datetime.now())
 
     def get_playtime(self, uuid_index, serverName):
         """Gets playtime for player and server"""
@@ -232,7 +232,7 @@ class Analytics():
         # If there's 1 more join than leaves
         if len(joinList) == len(leaveList) + 1:
             self.check_false_join(leaveList, joinList, uuid_index, serverName)
-            now = time.time()
+            now = datetime.now()
             total += (now - joinList[index])
 
         # If there are 2 more joins then leaves
@@ -256,7 +256,7 @@ class Analytics():
         # Check if most recent is a leave and player is online [Missing Join]
         elif leaveList[-1] > joinList[-1] and online:
             # Add join at time of discovery
-            self.playerstats[uuid_index]["Servers"][serverName]["Joins"].append(str(time.time()))
+            self.playerstats[uuid_index]["Servers"][serverName]["Joins"].append(str(datetime.now()))
     
     def check_false_leave(self, leaveList, joinList, uuid_index, serverName):
         """Handles a false/missing leave message"""  

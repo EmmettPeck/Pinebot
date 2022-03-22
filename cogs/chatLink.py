@@ -32,11 +32,11 @@ class ChatLink(commands.Cog):
 
                 # Message Type Sort
                 if(item.get("type") == MessageType.MSG):
-                    out_str = f"```yaml\n<{user}> {msg}\n```"
+                    out_str = f"```yaml\n💬 <{user}> {msg}\n```"
                 elif(item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE):
-                    out_str = f"```fix\n{user} {msg}\n```"
+                    out_str = f"```fix\n🚪 {user} {msg}\n```"
                 elif item.get("type") == MessageType.DEATH:
-                    out_str = f"```\n{user} {msg}\n```"
+                    out_str = f"```💀 {user} {msg}```"
                 await out_channel.send(out_str)
 
     @pass_mc_message.before_loop
