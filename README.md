@@ -9,7 +9,7 @@ Apart of a movement to transfer mc.nikesexparty.net to mc.pineserver.net, and pr
 > Vanilla 2018,
 > Others
 
-This is to be achieved using [itzg's docker minecraft server](https://github.com/itzg/docker-minecraft-server) and the autopause option whenever possible, as versions 1.18+ dislike the option in my experimenting.
+This is to be achieved using [itzg's docker minecraft server](https://github.com/itzg/docker-minecraft-server) and the autopause option.
 
 ---
 
@@ -27,6 +27,7 @@ This is to be achieved using [itzg's docker minecraft server](https://github.com
 - Permission testing
 - Moderator Role
 - Moderator only chat which outlines perfered actions of moderators around innapropriate images/conversations
+- Moderator chat allows approving whitelist applications to servers in an embedded style text formatting w/ reactions
 - Rules page & Chat filtering (Via discord if possible)
 - Icons
 

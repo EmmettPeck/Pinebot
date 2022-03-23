@@ -1,3 +1,5 @@
+"""Social Cog --- Hello!"""
+
 from discord.ext import commands
 from dockingPort import DockingPort
 

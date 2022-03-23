@@ -1,3 +1,5 @@
+"""Log and filter out past 100 non-unique fingerprints"""
+
 import json
 import hashlib
 
