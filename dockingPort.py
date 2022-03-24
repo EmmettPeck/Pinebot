@@ -1,31 +1,37 @@
 #   dockingPort.py
 #   by: Emmett Peck
-"""A python library that allows interracting with docker minecraft servers on PineServer"""
+"""Handles interracting with docker minecraft servers"""
 
 import json
 import subprocess
 import docker
 
-from messages import Death
-from messages import MessageType
 from messages import MessageFilter
 
 client = docker.from_env()
 
-class DockingPort():
-
+class DChannels:
     def __init__(self):
-        self.mc_Channels = self.load_mc_Channels()
-        self.filter = MessageFilter()
+        self.DChannels = self.load_DChannels()
 
-    def load_mc_Channels(self): 
+    def get_DChannels(self):
+        return self.DChannels
+
+    def load_DChannels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             return json.load(read_file)
 
-    def save_mc_Channels(self):
+    def save_DChannels(self, var=self.mc_Channels):
         # Overwrites json -- Careful
         with open(r"data/mc_Channels.json", 'w') as write_file:
-            json.dump(self.mc_Channels, write_file, indent = 2)
+            json.dump(var, write_file, indent = 2)
+
+class DockingPort:
+
+    def __init__(self):
+        dchannel = DChannels()
+        self.mc_Channels = dchannel.get_DChannels()
+        self.filter = MessageFilter()
 
     def portSend(self, channelID, command, logging=False): 
         """Sends command to corresponding server. Returns a str output of response."""
@@ -52,3 +58,6 @@ class DockingPort():
                 resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
                 break
         return self.filter.filter_mc_1_18(resp_str)
+
+class Manager:
+    """Listener manages input list of dockerids"""
