@@ -4,7 +4,7 @@ from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
 import json
 
-from dockingPort import DockingPort
+from dockingPort import DChannels, DockingPort
 
 def load_whitelist():
     # Load role_Whitelist.json
@@ -18,7 +18,6 @@ role_Whitelist = load_whitelist()
 class Utilities(commands.Cog):
 
     def __init__(self, bot):
-        self.dockingPort=DockingPort()
         self.bot = bot
 
     #GetID
@@ -31,18 +30,14 @@ class Utilities(commands.Cog):
     @commands.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {role_Whitelist} role.", brief="Whitelist a player.")
     @commands.has_any_role(*role_Whitelist)
     async def whitelist(self, ctx, *, mess):
-        ''' Whitelists <args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
-
-        # Check Roles agains role_Whitelist
-        response = self.dockingPort.portSend(ctx.channel.id, f"whitelist add {mess}",True)
+        ''' Whitelists <args> to corresponding server as is defined in DChannels if user has applicable role'''
+        response = DockingPort.send(ctx.channel.id, f"whitelist add {mess}",True)
         if response:
             await ctx.send(response)
         else:
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
-
     @whitelist.error
     async def whitelist_error(self, error, ctx):
-
         if isinstance(error, CheckFailure):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
 
@@ -50,15 +45,12 @@ class Utilities(commands.Cog):
     @commands.command(name='send', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
     @has_permissions(administrator=True)
     async def send(self, ctx, *, mess):
-        ''' Sends <args> as /<args> to corresponding server as is defined in dockingPort.py if user has applicable role'''
-
-        response = self.dockingPort.portSend(ctx.channel.id, mess,True)
+        ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
+        response = DockingPort.send(ctx.channel.id, mess,True)
         if response:
             await ctx.send(response)
         else:
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
-
-
     @send.error
     async def send_error(self, error, ctx):
         if isinstance(error, CheckFailure):
@@ -68,7 +60,7 @@ class Utilities(commands.Cog):
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", brief="Lists all pineserver.net servers")
     async def server_list(self, ctx):
         message = f"""``Server List``\n```Name    | IP                 | Description\n"""
-        for dict in self.dockingPort.mc_Channels:
+        for dict in DChannels.get_channels():
             
             # Format Spacing
             ni = len(dict.get("name"))

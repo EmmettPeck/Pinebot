@@ -1,13 +1,13 @@
 """Social Cog --- Hello!"""
 
 from discord.ext import commands
-from dockingPort import DockingPort
+
+from dockingPort import DChannels
 
 class Social(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.dockingPort = DockingPort()
 
     # Hello!       
     @commands.Cog.listener("on_message")
@@ -17,7 +17,7 @@ class Social(commands.Cog):
             return
 
         # Prevent hellos in mc channels because it's annoying
-        for channel in self.dockingPort.mc_Channels:
+        for channel in DChannels.get_channels():
             if message.channel.id == channel.get("channel_id"):
                 return
 

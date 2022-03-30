@@ -3,10 +3,10 @@
 import sys
 import json
 from datetime import datetime
+from dockingPort import DChannels, DockingPort
 
 sys.path.append("../Pinebot")
 from username_to_uuid import UsernameToUUID
-from dockingPort import DockingPort
 
 class Analytics():
 
@@ -27,16 +27,16 @@ class Analytics():
         uuid = converter.get_uuid()
         return uuid
     
-    def get_uuid_index(self, UUID):
+    def get_uuid_index(self, uuid):
         """Returns index of specific UUID in playerstats"""
         for D in self.playerstats: #Looks at each dict
                 if uuid == D["UUID"]:  #If dict UUID value matches UUID
                     return self.playerstats.index(D) #Sets index to index of dict
         return None
 
-    def get_server_index(self, serverName)
+    def get_server_index(self, serverName):
         """Returns index of specific serverName in playerstats"""
-        uuid_index = get_uuid_index("")
+        uuid_index = self.get_uuid_index("")
 
         for D in self.playerstats[uuid_index]["Servers"]:
             if str(serverName) in D:
@@ -46,14 +46,14 @@ class Analytics():
     def get_join_list_dt(self, uuid_index, server_index):
         """Breaks joins into dt list"""
         joinList = []
-            for join in self.playerstats[uuid_index]["Servers"][server_index]["Joins"]:
+        for join in self.playerstats[uuid_index]["Servers"][server_index]["Joins"]:
                 joinList.append(self.str_to_dt(join))
         return joinList
 
     def get_leave_list_dt(self, uuid_index, server_index):
         """Breaks leaves into dt list"""
         leaveList = []
-            for leave in self.playerstats[uuid_index]["Servers"][server_index]["Leaves"]:
+        for leave in self.playerstats[uuid_index]["Servers"][server_index]["Leaves"]:
                 leaveList.append(self.str_to_dt(leave))
         return leaveList    
             
@@ -97,10 +97,9 @@ class Analytics():
         """Adds player to json, copying servers from empty"""
         uuid = self.get_player_uuid(username)
 
-        if get_uuid_index(uuid):
+        if self.get_uuid_index(uuid):
             print(f"ERROR: add_player {username} already exists.")
-        
-        totem_index = get_uuid_index("")
+        totem_index = self.get_uuid_index("")
 
         # Create player
         self.playerstats.append({"UUID":uuid,"Servers":[]})
@@ -117,8 +116,6 @@ class Analytics():
                 for tag in current_tags:
                     if tag not in tag_list:
                         tag_list.append(tag)
-
-        
         # Add tags to servers
         for dictname in server_list:
             sname = {f'{dictname}':{}}
@@ -128,7 +125,6 @@ class Analytics():
         
         print(f"ADDED: added player {username}")
         self.save_playerstats()
-            
 
     def add_connect_event(self,username,serverName,online):
         '''Adds Join/Leave event to UUID by ServerName'''
@@ -136,10 +132,10 @@ class Analytics():
         try:
             Time = datetime.now()
             
-            uuid_index = get_uuid_index(uuid)
+            uuid_index = self.get_uuid_index(uuid)
 
             if uuid_index: 
-                server_index = get_server_index(serverName)
+                server_index = self.get_server_index(serverName)
             
             if online:
                 self.playerstats[uuid_index]["Servers"][server_index][str(serverName)]["Joins"].append(str(Time))
@@ -154,13 +150,12 @@ class Analytics():
 
     def get_player_list(self, serverName):
         """"Returns a list of players currently online"""
-        port = DockingPort()
 
         response = None
         # Match servername to channel ID, then get list 
-        for server in port.mc_Channels:
+        for server in DChannels.get_channels():
             if serverName == server['name']:
-                response = port.portSend(server['id'], "list")
+                response = DockingPort.send(server['id'], "/list")
                 print(response) # Test, then filter users out of. 
 
         if response:
@@ -173,10 +168,10 @@ class Analytics():
     def is_player_online(self, uuid_index, serverName):
         """Returns true if player is on server"""
 
-        player_list = get_player_list(serverName)
+        player_list = self.get_player_list(serverName)
         if player_list:
             for player in player_list: 
-                if get_uuid(player) == self.playerstats[uuid_index]["UUID"]:
+                if self.get_uuid(player) == self.playerstats[uuid_index]["UUID"]:
                     print (f"is_player_online: {player} is online {serverName}")
                     return True
             return False
@@ -185,14 +180,14 @@ class Analytics():
     def handle_playtime(self, player, serverName='total'): #Needs renaming and refactoring
         """Calls calculation functions, returns appropriate playtime"""   
         uuid = self.get_player_uuid(player)
-        uuid_index = get_uuid_index(uuid)
+        uuid_index = self.get_uuid_index(uuid)
 
         if uuid_index:
             if serverName.lower() == 'total':
                 pinetotal = None
                 
                 for server in self.playerstats[uuid_index]["Servers"]:
-                    playt = get_playtime(uuid_index, server.keys())
+                    playt = self.get_playtime(uuid_index, server.keys())
                     pinetotal += playt
                     self.update_playtime(uuid_index,server.keys(), playt)
 
@@ -200,7 +195,7 @@ class Analytics():
                 return pinetotal
                 
             else: # Catch to check if servername matches valid container, otherwise returns none?
-                playt = get_playtime(uuid_index, serverName)
+                playt = self.get_playtime(uuid_index, serverName)
                 self.update_playtime(uuid_index, serverName, playt)
 
                 self.save_playerstats()
@@ -215,7 +210,7 @@ class Analytics():
 
     def get_playtime(self, uuid_index, serverName):
         """Gets playtime for player and server"""
-        server_index = get_server_index(serverName)
+        server_index = self.get_server_index(serverName)
         if server_index:
             joinList = self.get_join_list_dt(uuid_index, server_index)
             leaveList = self.get_leave_list_dt(uuid_index, server_index)
@@ -261,11 +256,10 @@ class Analytics():
     def check_false_leave(self, leaveList, joinList, uuid_index, serverName):
         """Handles a false/missing leave message"""  
         online = self.is_player_online(uuid_index, serverName)
-
         # If first leave is before first join, removes. [Extra Leave]
         try:
             if leaveList[0] < joinList[0]:
-            self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop(0)
+                self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop(0)
         except IndexError:
             self.playerstats[uuid_index]["Servers"][serverName]["Leaves"].pop(0)
         

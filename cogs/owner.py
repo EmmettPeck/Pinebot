@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from dockingPort import DockingPort
+from dockingPort import DChannels
 
 class OwnerCog(commands.Cog):
 
@@ -21,43 +21,33 @@ class OwnerCog(commands.Cog):
         return True
     
     # Add server
-    @commands.command(name="addserver",hidden=True)
+    @commands.command(name="addserver", help="Adds args dictionary assigned to channel\n Acceptable args {name, version, docker_name, ip, description}")
     @commands.is_owner()
-    async def addServer(self, ctx, server_name, docker_id, ip, *, description):
+    async def addServer(self, ctx, server_name, version, docker_id, ip, *, description):
         """Adds server name, dockerID, IP, description tied to current channel"""
-        sDict = {"name": server_name, "channel_id": ctx.channel.id, "docker_name": docker_id, "ip": ip, "description": description}
+        sDict = {"name": server_name, "version": version, "channel_id": ctx.channel.id, "docker_name": docker_id, "ip": ip, "description": description}
         
-        # Save dict to file
-        dockingPort=DockingPort()
-        dockingPort.mc_Channels.append(sDict)
-        dockingPort.save_mc_Channels()
+        DChannels.add_channel(sDict)
 
-        # Reload cogs using mc_Channels
-        if self.cogs_reload(["cogs.utils","cogs.social","cogs.chatLink"]):
-            await ctx.send(f"Server {sDict} Added Successfully")
-            print(f"Server {sDict} Added Successfully")
-        else:
-            await ctx.send("Addserver Failed")
-            print("Addserver Failed")
+        await ctx.send(f"Server {sDict} Added Successfully")
+        print(f"Server {sDict} Added Successfully")
 
     #Remove server
-    @commands.command(name="remserver", help="Removes dictionary assigned to channel",hidden=True)
+    @commands.command(name="remserver", help="Removes dictionary assigned to channel")
     @commands.is_owner()
     async def remserver(self, ctx):
-        #Search List for channel id, pop dict, then save
-        dockingPort=DockingPort()
-        rDict = next(item for item in dockingPort.mc_Channels if item["channel_id"] == ctx.channel.id)
-        popID = dockingPort.mc_Channels.index(rDict)
-        dockingPort.mc_Channels.pop(popID)
-        dockingPort.save_mc_Channels()
-
-        # Reload cogs using mc_Channels
-        if self.cogs_reload(["cogs.utils","cogs.social"]):
+        """Remove server corresponding with channel_id"""
+        list = DChannels.get_channels()
+        try:
+            rDict = next(item for item in list if item["channel_id"] == ctx.channel.id)
+            popID = DChannels.get_channels.index(rDict)
+            DChannels.remove_channel(popID)
+        except:
+            await ctx.send(f"Server {rDict} Removal Failed")
+            print(f"Server {rDict} Removal Failed")
+        else:
             await ctx.send(f"Server {rDict} Removed Successfully")
             print(f"Server {rDict} Removed Successfully")
-        else:
-            await ctx.send("Remserver Failed")
-            print("Remserver Failed")
 
 # Hidden means it won't show up on the default help.
     @commands.command(name='load', hidden=True)
