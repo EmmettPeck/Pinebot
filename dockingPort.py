@@ -31,16 +31,27 @@ class DChannels:
     def get_dt_accessed(self):
         """Returns list of last accessed DT"""
         list = []
-
+        i = 0
         for channel in self.DChannels:
             if not "dt_accessed" in channel:
-                channel['dt_accessed'] = datetime.datetime.now()
-            list.append(channel['dt_accessed'])
+                now = datetime.datetime.now()
+                self.DChannels[i]['dt_accessed'] = str(now)
+                channel['dt_accessed'] = now
+            list.append(channel['dt_accessed'], '%d/%m/%y %H:%M:%S')
+            i += 1
         self.save_channels()
         return list
 
     def get_dt(self, index):
+        now = datetime.datetime.now()
+        self.DChannels[index] = now
+
         return self.dt_accessed[index]
+
+    def set_dt(self, index, time = datetime.datetime.now()):
+        """Sets datetime of serverindex to now or specified time"""
+        self.DChannels[index]['dt_accessed'] = str(time)
+        self.dt_accessed[index]['dt_accessed'] = time
 
     def remove_channel(self, index):
         """Pops item[index] from DChannels"""
@@ -58,7 +69,6 @@ class DChannels:
             return json.load(read_file)
 
     def save_channels(self):
-        # Overwrites json -- Careful
         with open(r"data/mc_Channels.json", 'w') as write_file:
             json.dump(self.DChannels, write_file, indent = 2)
 
@@ -142,6 +152,9 @@ class DockingListener:
         except docker.errors.APIError:
             print (f"ERROR: {node['docker_name']} raised APIERROR.")
 
-        """CONVERT TO SINCE logs using datetime && async functions"""
+        # Check docker logs since last dt
+        now = datetime.datetime.now()
         for line in container.logs(since=DChannels.get_dt()): 
             self.line_queues[num].put(str(line))
+        # Compare end compute time to precompute time as messages could get printed twice if sent after now, but before log compute
+        DChannels.set_dt(num, now)
