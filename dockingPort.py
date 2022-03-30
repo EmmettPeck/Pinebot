@@ -18,7 +18,7 @@ def singleton(cls):
 class DChannels:
     """Handles channel/docker information serialization"""
     def __init__(self):
-        self.DChannels = self.load_DChannels()
+        self.DChannels = self.load_channels()
 
     def get_channels(self):
         """Returns current channels"""
@@ -49,12 +49,12 @@ class DockingPort:
     """Handles docker interaction on hostsystem"""
     def __init__(self):
         self.filter = MessageFilter()
-        self.nodes = DChannels.get_DChannels()
+        self.nodes = DChannels.get_channels()
         self.listener = DockingListener(self.nodes)
 
     def reload(self):
         """Reloads dockingPort to match updated D_Channels"""
-        self.nodes = self.dchannel.get_DChannels()
+        self.nodes = DChannels.get_channels()
         del self.listener
         self.listener = DockingListener(self.nodes)
 

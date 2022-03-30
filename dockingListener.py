@@ -24,10 +24,10 @@ class DockingListener:
         for i in range(len(nodes)):
             self.line_queues.append(Queue())
             self.msg_queues.append(Queue())
-        print(f"## {i} line_queues built.")
-        print(f"## {i} msg_queues built.")
+        print(f"## {i+1} line_queues built.")
+        print(f"## {i+1} msg_queues built.")
 
-        self.listener_manager()
+        self.listener_manager(self.nodes)
 
     def __del__(self):
         for process in self.processes:
@@ -49,13 +49,18 @@ class DockingListener:
                     line = queue.get()
                     version = nodes[i]["version"]
                     if version.startswith("1.18"):
-                        self.msg_queues[i].append(self.filter.filter_mc_1_18(line))
+                        self.msg_queues[i].put(self.filter.filter_mc_1_18(line))
                 i += 1
 
     def container_listener(self, node, num):
         """Sends new messages to queue"""
-        container = self.client.containers.get(node['container_name'])
+        try:
+            container = self.client.containers.get(node['docker_name'])
+        except docker.errors.NotFound:
+            print (f"ERROR: {node['docker_name']} not found by {current_process().name}")
+        except docker.errors.APIError:
+            print (f"ERROR: {node['docker_name']} raised APIERROR when accessed by {current_process().name}")        
         print("###" + current_process().name + " listening to " + str(container))
         # Read Live Docker Logs
         for line in container.logs(stream=True):
-            self.queue[num].put(line)
+            self.line_queues[num].put(line)
