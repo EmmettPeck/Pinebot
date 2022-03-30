@@ -3,11 +3,8 @@
 """   A simple discord bot to allow remote whitelisting through discord.
       To be run on linux server alongside dockerized servers."""
 
-import discord
 from discord.ext import commands
-import sys, traceback
 import os
-import json
 from dotenv import load_dotenv
 
 load_dotenv()

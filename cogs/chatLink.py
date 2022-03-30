@@ -1,5 +1,8 @@
-"""I'm not sure how yet, but breakout a listener thread for each server using dockingPort, then act on returns"""
-import discord
+"""
+chatLink.py
+By: Emmett Peck
+A cog for discord.py that incorporates 
+"""
 from discord.ext import tasks, commands
 
 from dockingPort import DChannels, DockingPort
@@ -10,19 +13,19 @@ class ChatLink(commands.Cog):
     def __init__(self, bot):
         self.dockingPort=DockingPort()
         self.bot = bot
-        self.pass_mc_message.start()
+        self.pass_message.start()
 
     def cog_unload(self):
-        self.pass_mc_message.cancel()
+        self.pass_message.cancel()
 
     def get_outstring(self, item):
         """Message Type Sort and Formatting """
         user = item.get("username")
         msg = item.get("message")
 
-        if(item.get("type") == MessageType.MSG):
+        if   item.get("type") == MessageType.MSG:
             out_str = f"```yaml\n💬 <{user}> {msg}\n```"
-        elif(item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE):
+        elif item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE:
             out_str = f"```fix\n🚪 {user} {msg}\n```"
         elif item.get("type") == MessageType.DEATH:
             out_str = f"```💀 {user} {msg}```"
@@ -33,18 +36,19 @@ class ChatLink(commands.Cog):
 
     # Chat-Link
     # ------------------------------------------------------------------
-    @tasks.loop(seconds=0.5)
-    async def pass_mc_message(self):
+    @tasks.loop(seconds=0.1)
+    async def pass_message(self):
+        i = 0
         for server in DChannels.get_channels():
-            server_index = DChannels.get_channels.index(server)
-            queue = DockingPort.get_msg_queue(server_index)
+            queue = DockingPort.get_msg_queue(i)
             out_channel = self.bot.get_channel(server["id"])
 
             while not queue.empty():
                 item = queue.get()
                 out_str = self.get_outstring(item)
                 await out_channel.send(out_str)
-    @pass_mc_message.before_loop
+            i+=1
+    @pass_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 
 

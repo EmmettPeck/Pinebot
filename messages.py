@@ -1,4 +1,8 @@
-"""Message filtering and dictionary building from serverlogs for various MC versions"""
+"""
+messages.py
+By: Emmett Peck
+Message filtering and dictionary building from serverlogs for various MC versions/games
+"""
 from enum import Enum
 
 class MessageType(Enum):
