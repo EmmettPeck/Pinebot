@@ -60,7 +60,7 @@ class DockingListener:
             print (f"ERROR: {node['docker_name']} not found by {current_process().name}")
         except docker.errors.APIError:
             print (f"ERROR: {node['docker_name']} raised APIERROR when accessed by {current_process().name}")        
-        print("###" + current_process().name + " listening to " + str(container))
-        # Read Live Docker Logs
-        for line in container.logs(stream=True):
+        print("### " + current_process().name + " listening to " + str(container))
+        """CONVERT TO SINCE logs using datetime && async functions"""
+        for line in container.logs(follow=True): 
             self.line_queues[num].put(str(line))

@@ -41,9 +41,12 @@ class MessageFilter:
 
     def filter_mc_1_18(self, line):
         """Filters Deaths, Messages, Leaves/Joins from Minecraft 1.18 server log and returns as a dict"""
-        # Filter line by line for '] [Server thread/INFO]:'
+        
         # If msg hash isn't unique, kick out. 
         if self.fp.is_unique_fingerprint(self.fp.get_hash_int(line), self.fp.fingerprintDB):
+            # Remove newline characters
+            line = line.replace('\n', '')
+            # Filter for '] [Server thread/INFO]:'
             split_line = line.split('] [Server thread/INFO]:')
             # Separate and save time from messages
             if len(split_line) == 2: 
@@ -53,7 +56,6 @@ class MessageFilter:
                 if '<' and '>' in split_line[1]:
                     msg  = split_line[1].split('> ', 1)[1]
                     user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')]
-                    
                     return self.get_msg_dict(time, user, msg, MessageType.MSG)
 
                 # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
