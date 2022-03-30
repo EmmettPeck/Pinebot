@@ -5,6 +5,7 @@
 import json
 import subprocess
 import docker
+import datetime
 
 from messages import MessageFilter
 from dockingListener import DockingListener
@@ -19,10 +20,25 @@ class DChannels:
     """Handles channel/docker information serialization"""
     def __init__(self):
         self.DChannels = self.load_channels()
+        self.dt_accessed = self.get_dt_accessed()
 
     def get_channels(self):
         """Returns current channels"""
         return self.DChannels
+
+    def get_dt_accessed(self):
+        """Returns list of last accessed DT"""
+        list = []
+
+        for channel in self.DChannels:
+            if not "dt_accessed" in channel:
+                channel['dt_accessed'] = datetime.datetime.now()
+            list.append(channel['dt_accessed'])
+        self.save_channels()
+        return list
+
+    def get_dt(self, index):
+        return self.dt_accessed[index]
 
     def remove_channel(self, index):
         """Pops item[index] from DChannels"""

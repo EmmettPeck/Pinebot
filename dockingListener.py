@@ -1,7 +1,8 @@
 """Manages listener processes to get docker log updates"""
 import docker
 import asyncio
-from multiprocessing import Process, Queue, current_process, cpu_count
+from multiprocessing import Queue
+from dockingPort import DChannels
 
 from messages import MessageFilter
 
@@ -9,58 +10,44 @@ class DockingListener:
     """Listener manages input list of dockerids"""
 
     def __init__(self, nodes):
-        print("### STARTING DOCKER LISTENER")
         self.nodes = nodes
-        self.filter = MessageFilter()
-        self.processes = [] 
-        self.line_queues = []
-        self.msg_queues = []
+        self.line_queues = []                       # List of queues of unprocessed str
+        self.msg_queues = []                        # List of queues of processed dicts  # Log of previous dt vals for use with docker logs since
         self.client = docker.from_env()
-
-        if cpu_count() < len(nodes):
-            print("## WARNING: More container listeners than cpus")
         
         # Make queue for each node
         for i in range(len(nodes)):
             self.line_queues.append(Queue())
             self.msg_queues.append(Queue())
-        print(f"## {i+1} line_queues built.")
-        print(f"## {i+1} msg_queues built.")
 
-        self.listener_manager(self.nodes)
-
-    def __del__(self):
-        for process in self.processes:
-            process.join()
+        self.listener_manager()
     
-    def listener_manager(self, nodes):
-        """Starts listener processes and handles logs"""
-        for i in range(len(nodes)):
-            p = Process(target=self.container_listener, args=(nodes[i-1],i-1))
-            self.processes.append(p)
-            p.start()
-        
-        # Turn line_queues into msg_queues
-        while True:
-            i = 0
-            for queue in self.line_queues:
-                while not queue.empty():
-                    # Send line to right version filter
-                    line = queue.get()
-                    version = nodes[i]["version"]
-                    if version.startswith("1.18"):
-                        self.msg_queues[i].put(self.filter.filter_mc_1_18(line))
-                i += 1
+    async def listener_manager(self):
+        """Calls multiple async listeners on event loop"""
+        # Start async processes based on server dict index
+        await asyncio.gather(*[self.container_listener(self.nodes[i],i) for i in range(len(self.nodes))])
+        # Start msgqueue processing
+        await asyncio.gather(*[self.line_msg_queue(self.nodes[i],i) for i in range(len(self.nodes))])
 
-    def container_listener(self, node, num):
+    async def line_msg_queue(self, node, index):
+        """Processes node w/ corresponding index's line queue int msg queue"""
+        queue = self.line_queues[index]
+        while not queue.empty():
+            # Send line to right version filter
+            line = queue.get()
+            version = node["version"]
+            if version.startswith("mc_1.18"):
+                self.msg_queues[index].put(MessageFilter().filter_mc_1_18(line))
+
+    async def container_listener(self, node, num):
         """Sends new messages to queue"""
         try:
             container = self.client.containers.get(node['docker_name'])
         except docker.errors.NotFound:
-            print (f"ERROR: {node['docker_name']} not found by {current_process().name}")
+            print (f"ERROR: {node['docker_name']} not found.")
         except docker.errors.APIError:
-            print (f"ERROR: {node['docker_name']} raised APIERROR when accessed by {current_process().name}")        
-        print("### " + current_process().name + " listening to " + str(container))
+            print (f"ERROR: {node['docker_name']} raised APIERROR.")
+
         """CONVERT TO SINCE logs using datetime && async functions"""
-        for line in container.logs(follow=True): 
+        for line in container.logs(since=DChannels.get_dt()): 
             self.line_queues[num].put(str(line))

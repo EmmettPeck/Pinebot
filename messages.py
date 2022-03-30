@@ -30,9 +30,6 @@ class Death:
 class MessageFilter:
     """Filters server logs into organized dictionaries"""
 
-    def __init__(self):
-        self.fp = FingerPrints()
-
     def get_msg_dict(self, time, username, message, MessageType):
         """Appends and prints messages to return_list as dictionaries"""
         print (f" --- Time:{time}, User:{username}, Msg:{message}")
@@ -42,35 +39,33 @@ class MessageFilter:
     def filter_mc_1_18(self, line):
         """Filters Deaths, Messages, Leaves/Joins from Minecraft 1.18 server log and returns as a dict"""
         
-        # If msg hash isn't unique, kick out. 
-        if self.fp.is_unique_fingerprint(self.fp.get_hash_int(line), self.fp.fingerprintDB):
-            # Remove newline characters
-            line = line.replace('\n', '')
-            # Filter for '] [Server thread/INFO]:'
-            split_line = line.split('] [Server thread/INFO]:')
-            # Separate and save time from messages
-            if len(split_line) == 2: 
-                time = split_line[0].split('[',1)[1]
+        # Remove newline characters
+        line = line.replace('\n', '')
+        # Filter for '] [Server thread/INFO]:'
+        split_line = line.split('] [Server thread/INFO]:')
+        # Separate and save time from messages
+        if len(split_line) == 2: 
+            time = split_line[0].split('[',1)[1]
 
-                # Message Detection using <{user}> {msg}
-                if '<' and '>' in split_line[1]:
-                    msg  = split_line[1].split('> ', 1)[1]
-                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')]
-                    return self.get_msg_dict(time, user, msg, MessageType.MSG)
+            # Message Detection using <{user}> {msg}
+            if '<' and '>' in split_line[1]:
+                msg  = split_line[1].split('> ', 1)[1]
+                user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')]
+                return self.get_msg_dict(time, user, msg, MessageType.MSG)
 
-                # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
-                elif split_line[1].find(" joined the game") >= 0: 
-                    msg = "joined the game"
-                    user = split_line[1].split(msg)[0].strip()
-                    return self.get_msg_dict(time, user, msg, MessageType.JOIN)
-                elif split_line[1].find(" left the game") >= 0:
-                    msg = "left the game"
-                    user = split_line[1].split(msg)[0].strip()
-                    return self.get_msg_dict(time, user, msg, MessageType.LEAVE)
+            # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
+            elif split_line[1].find(" joined the game") >= 0: 
+                msg = "joined the game"
+                user = split_line[1].split(msg)[0].strip()
+                return self.get_msg_dict(time, user, msg, MessageType.JOIN)
+            elif split_line[1].find(" left the game") >= 0:
+                msg = "left the game"
+                user = split_line[1].split(msg)[0].strip()
+                return self.get_msg_dict(time, user, msg, MessageType.LEAVE)
 
-                # Death Message Detection
-                else:
-                    dm = Death(split_line[1])
-                    if dm.is_death():
-                        return self.get_msg_dict(time, dm.player, dm.stripped_msg, MessageType.DEATH)
+            # Death Message Detection
+            else:
+                dm = Death(split_line[1])
+                if dm.is_death():
+                    return self.get_msg_dict(time, dm.player, dm.stripped_msg, MessageType.DEATH)
         
