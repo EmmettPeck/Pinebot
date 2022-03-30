@@ -15,7 +15,7 @@ class ChatLink(commands.Cog):
     def cog_unload(self):
         self.pass_mc_message.cancel()
 
-    def get_out_str(self, item):
+    def get_outstring(self, item):
         """Message Type Sort and Formatting """
         user = item.get("username")
         msg = item.get("message")
@@ -35,7 +35,6 @@ class ChatLink(commands.Cog):
     # ------------------------------------------------------------------
     @tasks.loop(seconds=0.5)
     async def pass_mc_message(self):
-
         for server in DChannels.get_channels():
             server_index = DChannels.get_channels.index(server)
             queue = DockingPort.get_msg_queue(server_index)
@@ -43,7 +42,7 @@ class ChatLink(commands.Cog):
 
             while not queue.empty():
                 item = queue.get()
-                out_str = self.get_out_str(item)
+                out_str = self.get_outstring(item)
                 await out_channel.send(out_str)
     @pass_mc_message.before_loop
     async def before_pass_mc_message(self):

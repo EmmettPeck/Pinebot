@@ -91,4 +91,4 @@ class DockingPort:
 
     def get_msg_queue(self, server_index):
         """Returns queue to specified docker channel"""
-        return self.msg_queues[server_index]
+        return self.listener.get_queue(server_index)

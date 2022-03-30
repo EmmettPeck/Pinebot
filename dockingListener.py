@@ -21,6 +21,9 @@ class DockingListener:
             self.msg_queues.append(Queue())
 
         self.listener_manager()
+
+    def get_queue(self, index):
+        return self.msg_queues[index]
     
     async def listener_manager(self):
         """Calls multiple async listeners on event loop"""

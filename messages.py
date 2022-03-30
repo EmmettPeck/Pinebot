@@ -1,8 +1,6 @@
 """Message filtering and dictionary building from serverlogs for various MC versions"""
 from enum import Enum
 
-from fingerprints import FingerPrints
-
 class MessageType(Enum):
     MSG = 1
     JOIN = 2
