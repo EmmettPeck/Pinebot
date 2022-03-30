@@ -31,10 +31,12 @@ class FingerPrints:
         try:
             comparison = database_list.index(fingerprint)
         except ValueError as v:
+            # Insert new elements to list 
             database_list.insert(0, fingerprint)
             # Pop elements over pos 100 to keep the list small
             if len(database_list) > 100: 
                 database_list.pop(100)
+            self.save_fingerprintDB()
             return True
         else:
             return False

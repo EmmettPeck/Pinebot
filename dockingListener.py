@@ -63,4 +63,4 @@ class DockingListener:
         print("###" + current_process().name + " listening to " + str(container))
         # Read Live Docker Logs
         for line in container.logs(stream=True):
-            self.line_queues[num].put(line)
+            self.line_queues[num].put(str(line))
