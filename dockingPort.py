@@ -3,15 +3,14 @@ dockingPort.py
 By: Emmett Peck
 Handles interraction with docker game servers
 """
-
+from discord.ext import tasks, commands
 import asyncio
-import datetime
+from datetime import datetime
 import json
 import subprocess
-from multiprocessing import Queue
+import queue
 
 import docker
-
 from messages import MessageFilter
 
 def singleton(cls):
@@ -34,24 +33,26 @@ class DChannels:
         i = 0
         for channel in self.DChannels:
             if not "dt_accessed" in channel:
-                now = datetime.datetime.now()
-                self.DChannels[i]['dt_accessed'] = str(now)
-                channel['dt_accessed'] = now
-            list.append(channel['dt_accessed'], '%d/%m/%y %H:%M:%S')
+                now = datetime.now()
+                strnow = str(now)
+                self.DChannels[i]['dt_accessed'] = strnow
+                channel['dt_accessed'] = strnow
+            # String to DT conversion
+            list.append(datetime.strptime(channel['dt_accessed'], '%Y-%m-%d %H:%M:%S.%f'))
             i += 1
         self.save_channels()
         return list
 
     def get_dt(self, index):
-        now = datetime.datetime.now()
-        self.DChannels[index] = now
-
         return self.dt_accessed[index]
 
-    def set_dt(self, index, time = datetime.datetime.now()):
+    def set_dt(self, index, dt = None):
         """Sets datetime of serverindex to now or specified time"""
-        self.DChannels[index]['dt_accessed'] = str(time)
-        self.dt_accessed[index]['dt_accessed'] = time
+        if dt == None:
+            dt = datetime.now()
+        #print(f"{dt} {type(dt)}")
+        self.dt_accessed[index] = dt
+        self.DChannels[index]['dt_accessed'] = str(dt)
 
     def remove_channel(self, index):
         """Pops item[index] from DChannels"""
@@ -72,6 +73,59 @@ class DChannels:
         with open(r"data/mc_Channels.json", 'w') as write_file:
             json.dump(self.DChannels, write_file, indent = 2)
 
+class DockingListener:
+    """Manages listener processes to get accurate docker log updates"""
+
+    def __init__(self, nodes):
+        self.nodes = nodes
+        self.line_queues = []                       # List of queues of unprocessed str
+        self.msg_queues = []                        # List of queues of processed dicts  # Log of previous dt vals for use with docker logs since
+        self.client = docker.from_env()
+        
+        # Make queue for each node
+        for i in range(len(nodes)):
+            self.line_queues.append(queue.Queue())
+            self.msg_queues.append(queue.Queue())
+        print(f"Built queues for {i} containers")
+
+    def get_queue(self, index):
+        return self.msg_queues[index]
+    
+    async def listener_manager(self):
+        """Calls multiple async listeners"""
+        # Start async processes based on server dict index
+        await asyncio.gather(*[self.container_listener(self.nodes[i],i) for i in range(len(self.nodes))])
+        # Start msgqueue processing
+        await asyncio.gather(*[self.line_msg_queue(self.nodes[i],i) for i in range(len(self.nodes))])
+
+    async def line_msg_queue(self, node, index):
+        """Processes node w/ corresponding index's line queue int msg queue"""
+        queue = self.line_queues[index]
+        while not queue.empty():
+            # Send line to right version filter
+            line = queue.get()
+            print(f" ------l  {line}")
+            version = node["version"]
+            if version.startswith("mc_1.18"):
+                text = MessageFilter().filter_mc_1_18(line)
+                if text:
+                    self.msg_queues[index].put(text)
+
+    async def container_listener(self, node, num):
+        """Sends new messages to queue"""
+        try:
+            container = self.client.containers.get(node['docker_name'])
+        except docker.errors.NotFound:
+            print (f"ERROR: {node['docker_name']} not found.")
+        except docker.errors.APIError:
+            print (f"ERROR: {node['docker_name']} raised APIERROR.")
+
+        # Check docker logs since last dt
+        now = datetime.now()
+        for line in container.logs(stream = True, since=DChannels.get_dt(num)): 
+            self.line_queues[num].put(str(line))
+        # Compare end compute time to precompute time as messages could get printed twice if sent after now, but before log compute
+        DChannels.set_dt(num, now)
 
 @singleton
 class DockingPort:
@@ -86,6 +140,10 @@ class DockingPort:
         self.nodes = DChannels.get_channels()
         del self.listener
         self.listener = DockingListener(self.nodes)
+    
+    async def listen(self):
+        """Listen to """
+        await self.listener.listener_manager()
 
     def send(self, channelID, command, logging=False): 
         """Sends command to corresponding server. Returns a str output of response."""
@@ -104,57 +162,5 @@ class DockingPort:
 
     def get_msg_queue(self, server_index):
         """Returns queue to specified docker channel"""
-        return self.listener.get_queue(server_index)
-
-    
-class DockingListener:
-    """Manages listener processes to get accurate docker log updates"""
-
-    def __init__(self, nodes):
-        self.nodes = nodes
-        self.line_queues = []                       # List of queues of unprocessed str
-        self.msg_queues = []                        # List of queues of processed dicts  # Log of previous dt vals for use with docker logs since
-        self.client = docker.from_env()
-        
-        # Make queue for each node
-        for i in range(len(nodes)):
-            self.line_queues.append(Queue())
-            self.msg_queues.append(Queue())
-
-        self.listener_manager()
-
-    def get_queue(self, index):
-        return self.msg_queues[index]
-    
-    async def listener_manager(self):
-        """Calls multiple async listeners on event loop"""
-        # Start async processes based on server dict index
-        await asyncio.gather(*[self.container_listener(self.nodes[i],i) for i in range(len(self.nodes))])
-        # Start msgqueue processing
-        await asyncio.gather(*[self.line_msg_queue(self.nodes[i],i) for i in range(len(self.nodes))])
-
-    async def line_msg_queue(self, node, index):
-        """Processes node w/ corresponding index's line queue int msg queue"""
-        queue = self.line_queues[index]
-        while not queue.empty():
-            # Send line to right version filter
-            line = queue.get()
-            version = node["version"]
-            if version.startswith("mc_1.18"):
-                self.msg_queues[index].put(MessageFilter().filter_mc_1_18(line))
-
-    async def container_listener(self, node, num):
-        """Sends new messages to queue"""
-        try:
-            container = self.client.containers.get(node['docker_name'])
-        except docker.errors.NotFound:
-            print (f"ERROR: {node['docker_name']} not found.")
-        except docker.errors.APIError:
-            print (f"ERROR: {node['docker_name']} raised APIERROR.")
-
-        # Check docker logs since last dt
-        now = datetime.datetime.now()
-        for line in container.logs(since=DChannels.get_dt()): 
-            self.line_queues[num].put(str(line))
-        # Compare end compute time to precompute time as messages could get printed twice if sent after now, but before log compute
-        DChannels.set_dt(num, now)
+        print(f"Queue = {self.listener.msg_queues[server_index]}") 
+        return self.listener.msg_queues[server_index]

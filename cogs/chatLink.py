@@ -5,13 +5,14 @@ A cog for discord.py that incorporates
 """
 from discord.ext import tasks, commands
 
-from dockingPort import DChannels, DockingPort
+from dockingPort import *
 from messages import MessageType
+
+import queue # imported for using queue.Empty exception
 
 class ChatLink(commands.Cog):
 
     def __init__(self, bot):
-        self.dockingPort=DockingPort()
         self.bot = bot
         self.pass_message.start()
 
@@ -20,33 +21,45 @@ class ChatLink(commands.Cog):
 
     def get_outstring(self, item):
         """Message Type Sort and Formatting """
-        user = item.get("username")
-        msg = item.get("message")
-
-        if   item.get("type") == MessageType.MSG:
-            out_str = f"```yaml\n💬 <{user}> {msg}\n```"
-        elif item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE:
-            out_str = f"```fix\n🚪 {user} {msg}\n```"
-        elif item.get("type") == MessageType.DEATH:
-            out_str = f"```💀 {user} {msg}```"
+        try:
+            user = item.get("username")
+            msg = item.get("message")
+        except AttributeError:
+            return None
         else:
-            out_str = ""
-            print("ERROR: out_str fallthrough")
-        return out_str
+            if   item.get("type") == MessageType.MSG:
+                out_str = f"```yaml\n💬 <{user}> {msg}\n```"
+            elif item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE:
+                out_str = f"```fix\n🚪 {user} {msg}\n```"
+            elif item.get("type") == MessageType.DEATH:
+                out_str = f"```💀 {user} {msg}```"
+            else:
+                out_str = ""
+                print("ERROR: out_str fallthrough")
+            return out_str
 
     # Chat-Link
     # ------------------------------------------------------------------
-    @tasks.loop(seconds=0.1)
+    @tasks.loop(seconds=10)
     async def pass_message(self):
         i = 0
-        for server in DChannels.get_channels():
-            queue = DockingPort.get_msg_queue(i)
-            out_channel = self.bot.get_channel(server["id"])
+        await DockingPort.listen()
+        channels = DChannels.get_channels()
+        for server in channels:
+            q = DockingPort.get_msg_queue(i) #Is this possibly not a pointer?
+            out_channel = self.bot.get_channel(server.get("id"))
 
-            while not queue.empty():
-                item = queue.get()
+            try:
+                item = q.get_nowait()
+            except queue.Empty:
+                i+1
+                print("Queue Empty Exception")
+                break
+            else:  
+                print(f" --- El: {item}")
                 out_str = self.get_outstring(item)
-                await out_channel.send(out_str)
+                if out_str:
+                    await out_channel.send(out_str)
             i+=1
     @pass_message.before_loop
     async def before_pass_mc_message(self):
