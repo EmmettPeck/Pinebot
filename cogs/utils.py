@@ -4,8 +4,6 @@ from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
 import json
 
-from dockingPort import DChannels, DockingPort
-
 def load_whitelist():
     # Load role_Whitelist.json
     with open(r"data/role_Whitelist.json", 'r') as read_file:
@@ -13,7 +11,7 @@ def load_whitelist():
     return role_Whitelist
 
 # Using Global (In module)
-role_Whitelist = load_whitelist()
+role_Whitelist = load_whitelist() ERROR
 
 class Utilities(commands.Cog):
 

@@ -3,7 +3,6 @@
 import sys
 import json
 from datetime import datetime
-from dockingPort import DChannels, DockingPort
 
 sys.path.append("../Pinebot")
 from username_to_uuid import UsernameToUUID

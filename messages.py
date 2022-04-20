@@ -38,18 +38,11 @@ class MessageFilter:
         local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
         return local_dict
 
-    def filter_mc_1_18(self, line):
+    def filter_mc_1_18(self, in_str):
         """Filters Deaths, Messages, Leaves/Joins from Minecraft 1.18 server log and returns as a dict"""
-        
-        if line.isnumeric():
-            return None
 
-        # Remove newline characters
-        print(" --filter  " + line)
-        line = line.replace('\n', '')
-        print(" --filter  " + line)
         # Filter for '] [Server thread/INFO]:'
-        split_line = line.split('] [Server thread/INFO]:')
+        split_line = in_str.split('] [Server thread/INFO]:')
         # Separate and save time from messages
         if len(split_line) == 2:
             print(split_line[1]) 

@@ -1,8 +1,6 @@
 import discord
 from discord.ext import commands
 
-from dockingPort import DChannels
-
 class OwnerCog(commands.Cog):
 
     def __init__(self, bot):

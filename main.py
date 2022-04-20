@@ -8,12 +8,12 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-extensions = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.connect4', 'cogs.chatLink'] #Cogfiles
+extensions = ['cogs.dockingPort','cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.connect4', 'cogs.chatLink'] #Cogfiles
 
 def get_prefix(bot, message):
     """A callable Prefix for our bot. This could be edited to allow per server prefixes."""
 
-    prefixes = ['>'] # , 'lol '
+    prefixes = ['>']
 
     return commands.when_mentioned_or(*prefixes)(bot, message)
 

@@ -2,8 +2,6 @@
 
 from discord.ext import commands
 
-from dockingPort import DChannels
-
 class Social(commands.Cog):
 
     def __init__(self, bot):
