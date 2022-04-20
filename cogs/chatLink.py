@@ -45,16 +45,16 @@ class ChatLink(commands.Cog):
         i = 0
         await DockingPort.listen()
         channels = DChannels.get_channels()
+        print(channels)
         for server in channels:
             q = DockingPort.get_msg_queue(i) #Is this possibly not a pointer?
             out_channel = self.bot.get_channel(server.get("id"))
-
             try:
-                item = q.get_nowait()
+                item = q.get()
             except queue.Empty:
+                print("Queue {i} Empty Exception")
                 i+1
-                print("Queue Empty Exception")
-                break
+                continue
             else:  
                 print(f" --- El: {item}")
                 out_str = self.get_outstring(item)

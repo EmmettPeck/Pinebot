@@ -2,8 +2,9 @@
 dockingPort.py
 By: Emmett Peck
 Handles interraction with docker game servers
+### How to reload functions effectively? How far do pointers go, as will changing DChannels here result in a different self.nodes in DockingListener?
 """
-from discord.ext import tasks, commands
+
 import asyncio
 from datetime import datetime
 import json
@@ -21,39 +22,40 @@ class DChannels:
     """Handles channel/docker information serialization"""
     def __init__(self):
         self.DChannels = self.load_channels()
-        self.dt_accessed = self.get_dt_accessed()
 
     def get_channels(self):
-        """Returns current channels"""
+        """Returns current docker channels managed by Pinebot"""
         return self.DChannels
 
-    def get_dt_accessed(self):
-        """Returns list of last accessed DT"""
+# DT ----------------------------------
+# Datetimes stored as formatted strings in DChannels, get_dt_accessed returns list of datetimes
+    async def get_dt_accessed(self):
+        """Returns list of last accessed DT for DChannels"""
         list = []
+        save = False
         i = 0
         for channel in self.DChannels:
-            if not "dt_accessed" in channel:
-                now = datetime.now()
-                strnow = str(now)
-                self.DChannels[i]['dt_accessed'] = strnow
-                channel['dt_accessed'] = strnow
-            # String to DT conversion
-            list.append(datetime.strptime(channel['dt_accessed'], '%Y-%m-%d %H:%M:%S.%f'))
+            if not "dt_accessed" in channel: 
+                self.DChannels[i]['dt_accessed'] = datetime.now().strftime('%Y-%m-%dT%H:%M:%S.%f')
+                save = True
+            list.append(self.DChannels[i]['dt_accessed'])
             i += 1
-        self.save_channels()
+        if save: self.save_channels()
+
+        i = 0
+        for item in list:
+            list[i] = datetime.strptime(item,'%Y-%m-%dT%H:%M:%S.%f') 
+            i += 1
         return list
 
-    def get_dt(self, index):
-        return self.dt_accessed[index]
-
-    def set_dt(self, index, dt = None):
+    def set_dt(self, index, dt = datetime.now()):
         """Sets datetime of serverindex to now or specified time"""
-        if dt == None:
-            dt = datetime.now()
-        #print(f"{dt} {type(dt)}")
-        self.dt_accessed[index] = dt
-        self.DChannels[index]['dt_accessed'] = str(dt)
+        self.DChannels[index]['dt_accessed'] = dt.strftime('%Y-%m-%dT%H:%M:%S.%f')
 
+    async def get_dt(self, index):
+        """Returns dt_accessed of given index"""
+        return datetime.strptime(self.DChannels[index]['dt_accessed'], '%Y-%m-%dT%H:%M:%S.%f')
+# ---------------------------------------
     def remove_channel(self, index):
         """Pops item[index] from DChannels"""
         self.DChannels.pop(index)
@@ -64,7 +66,7 @@ class DChannels:
         self.DChannels.append(dictionary)
         self.save_DChannels()
         DockingPort.reload()
-
+        
     def load_channels(self): 
         with open(r"data/mc_Channels.json", 'r') as read_file:
             return json.load(read_file)
@@ -86,7 +88,7 @@ class DockingListener:
         for i in range(len(nodes)):
             self.line_queues.append(queue.Queue())
             self.msg_queues.append(queue.Queue())
-        print(f"Built queues for {i} containers")
+        print(f"Built queues for {i+1} containers")
 
     def get_queue(self, index):
         return self.msg_queues[index]
@@ -104,12 +106,11 @@ class DockingListener:
         while not queue.empty():
             # Send line to right version filter
             line = queue.get()
-            print(f" ------l  {line}")
-            version = node["version"]
-            if version.startswith("mc_1.18"):
-                text = MessageFilter().filter_mc_1_18(line)
-                if text:
-                    self.msg_queues[index].put(text)
+            text = MessageFilter().filter_mc_1_18(line)
+            #self.msg_queues[index].put({"time":"Test", "username":"Test", "message": "Test", "type": 1}) #Test for dict access outside dockingport 
+            if text:
+                self.msg_queues[index].put(text)
+                print(f"Q- {text} added to queue.")
 
     async def container_listener(self, node, num):
         """Sends new messages to queue"""
@@ -122,8 +123,11 @@ class DockingListener:
 
         # Check docker logs since last dt
         now = datetime.now()
-        for line in container.logs(stream = True, since=DChannels.get_dt(num)): 
+        t = await DChannels.get_dt_accessed()
+        print(f"--#{num} - {t[num]} - {type(t[num])}")
+        for line in container.logs(since=t[num]): 
             self.line_queues[num].put(str(line))
+            print(str(line) + f" {type(line)}")
         # Compare end compute time to precompute time as messages could get printed twice if sent after now, but before log compute
         DChannels.set_dt(num, now)
 
@@ -162,5 +166,4 @@ class DockingPort:
 
     def get_msg_queue(self, server_index):
         """Returns queue to specified docker channel"""
-        print(f"Queue = {self.listener.msg_queues[server_index]}") 
         return self.listener.msg_queues[server_index]
