@@ -43,6 +43,7 @@ class DB:
             json.dump(self.containers, write_file, indent = 2)
 
     def add_container(self, sDict):
+        self.add_msg_queue()
         self.containers.append(sDict)
         self.save_containers()
 
@@ -51,6 +52,9 @@ class DB:
         self.save_containers()
 
     # Msg Queues -------------------------------------------------------
+    def add_msg_queue(self):
+        self.msg_queue.append(queue.Queue())
+
     def build_msg_queues(self):
         for i in range(len(self.get_containers())):
             self.msg_queue.append(queue.Queue())

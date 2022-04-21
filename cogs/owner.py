@@ -47,6 +47,7 @@ class OwnerCog(commands.Cog):
         else:
             await ctx.send(f"Server {rDict} Removed Successfully")
             print(f"Server {rDict} Removed Successfully")
+            self.cogs_reload()
     # --------------------------------------------------------------------------------------------------------------------------------------------------
     # Hidden means it won't show up on the default help.
     @commands.command(name='load', hidden=True)
