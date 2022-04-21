@@ -1,14 +1,16 @@
 import discord
 from discord.ext import commands
 
+from database import DB
+
 class OwnerCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-
-    def cogs_reload(self, cogs):
-        """Returns true if successful; reloads cogs referenced in parameters"""
-        for cog in cogs:    
+    # Cog Reload------------------------------------------------------------------------------------------------------------------------------------------
+    def cogs_reload(self):
+        """Returns true if successful; reloads cogs referenced in DB"""
+        for cog in DB.get_cogs():    
             try:
                 self.bot.unload_extension(cog)
             except Exception as e:
@@ -17,37 +19,36 @@ class OwnerCog(commands.Cog):
             else:
                 self.bot.load_extension(cog)
         return True
-    
-    # Add server
+    # Add server ------------------------------------------------------------------------------------------------------------------------------------------
     @commands.command(name="addserver", help="Adds args dictionary assigned to channel\n Acceptable args {name, version, docker_name, ip, description}")
     @commands.is_owner()
     async def addServer(self, ctx, server_name, version, docker_id, ip, *, description):
         """Adds server name, dockerID, IP, description tied to current channel"""
         sDict = {"name": server_name, "version": version, "channel_id": ctx.channel.id, "docker_name": docker_id, "ip": ip, "description": description}
         
-        DChannels.add_channel(sDict)
+        DB.add_container(sDict)
 
         await ctx.send(f"Server {sDict} Added Successfully")
         print(f"Server {sDict} Added Successfully")
 
-    #Remove server
+    # Remove server
     @commands.command(name="remserver", help="Removes dictionary assigned to channel")
     @commands.is_owner()
     async def remserver(self, ctx):
         """Remove server corresponding with channel_id"""
-        list = DChannels.get_channels()
+        list = DB.get_containers()
         try:
             rDict = next(item for item in list if item["channel_id"] == ctx.channel.id)
-            popID = DChannels.get_channels.index(rDict)
-            DChannels.remove_channel(popID)
+            popID = list.index(rDict)
+            DB.remove_container(popID)
         except:
             await ctx.send(f"Server {rDict} Removal Failed")
             print(f"Server {rDict} Removal Failed")
         else:
             await ctx.send(f"Server {rDict} Removed Successfully")
             print(f"Server {rDict} Removed Successfully")
-
-# Hidden means it won't show up on the default help.
+    # --------------------------------------------------------------------------------------------------------------------------------------------------
+    # Hidden means it won't show up on the default help.
     @commands.command(name='load', hidden=True)
     @commands.is_owner()
     async def cogLoad(self, ctx, *, cog: str):
@@ -87,7 +88,7 @@ class OwnerCog(commands.Cog):
             await ctx.send(f'**`ERROR:`** {type(e).__name__} - {e}')
         else:
             await ctx.send('**`SUCCESS`**')
-
+    # --------------------------------------------------------------------------------------------------------------------------------------------------
 
 def setup(bot):
     bot.add_cog(OwnerCog(bot))        

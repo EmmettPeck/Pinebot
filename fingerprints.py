@@ -5,17 +5,23 @@ import hashlib
 
 class FingerPrints:
 
-    def __init__(self):
+    def __init__(self, in_str):
+        self.name = in_str
         self.fingerprintDB = self.load_fingerprintDB()
     
     def load_fingerprintDB(self):
         """Loads the previous 100 message hashes"""
-        with open(r"data/hashDump.json", 'r') as read_file:
-            return json.load(read_file)
+        try:
+            with open(rf"data/hash_{self.name}.json", 'r') as read_file:
+                return json.load(read_file)
+        except FileNotFoundError:
+            with open(rf"data/hash_{self.name}.json", 'w+') as write_file:
+                json.dump([], write_file, indent = 2)
+            self.load_fingerprintDB()
     
     def save_fingerprintDB(self):
         """Saves the previous 100 message hashes"""
-        with open(r"data/hashDump.json", 'w') as write_file:
+        with open(rf"data/hash_{self.name}.json", 'w') as write_file:
             json.dump(self.fingerprintDB, write_file, indent = 2)
     
     def get_hash_int(self, instr):
@@ -26,8 +32,14 @@ class FingerPrints:
         hash_ = int(hash_id,16)
         return hash_
 
-    def is_unique_fingerprint(self, fingerprint, database_list):
+    def is_unique_fingerprint(self, string, database_list=None):
         """Compares hash to provided database_list"""
+        fingerprint = self.get_hash_int(string)
+
+        # Catch to set to own fingerprintdb
+        if database_list == None:
+            database_list = self.fingerprintDB
+
         try:
             comparison = database_list.index(fingerprint)
         except ValueError as v:
