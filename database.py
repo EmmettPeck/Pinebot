@@ -12,12 +12,18 @@ class DB:
     def __init__(self):
         self.msg_queue = []
         self.fingerprint = []
-        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.connect4', 'cogs.chatLink']
+        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.connect4', 'cogs.chatLink', 'cogs.analytics']
 
         self.load_containers()
         self.load_role_whitelist()
         self.build_msg_queues()
         self.build_fingerprints()
+
+        # Analytics
+        self.connect_queue = queue.Queue()
+        self.playerstats = self.load_playerstats()
+        if not self.playerstats:
+            self.create_playerstats()
 
     # Role Whitelist -----------------------------------------------------------
     def get_role_whitelist(self):
@@ -70,3 +76,31 @@ class DB:
 
     def get_cogs(self):
         return self.cogs
+    # Playerstats -----------------------------------------------------------
+    def add_connect_event(self, msg, server):
+        x = msg
+        x['server'] = server
+        self.connect_queue.put(x)
+
+    def get_connect_queue(self):
+        return self.connect_queue
+
+    def load_playerstats(self):
+        """Load playerstats from playerstats.json"""
+        try:
+            with open("data/playerstats.json") as f:
+                e = json.load(f)
+        except FileNotFoundError:
+            return None
+        else:
+            return e
+
+    def save_playerstats(self):
+        """Saves playerstats to playerstats.json"""
+        with open("data/playerstats.json", 'w') as f:
+            json.dump(self.playerstats, f, indent = 2)
+    
+    def create_playerstats(self):
+        """Creates empty playerstats.json structure""" 
+        self.playerstats = [{'UUID':'','Servers':[]}]
+        self.save_playerstats()
