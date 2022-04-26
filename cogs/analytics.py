@@ -20,10 +20,6 @@ class Analytics(commands.Cog):
 
     def cog_unload(self):
         self.connect_event_handler.cancel()
-
-    def str_to_dt(self, dt_str):
-        """Converts string to datetime format"""
-        return datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')    
     
     def get_player_uuid(self, username):
         """Get player UUID from username"""
@@ -47,6 +43,32 @@ class Analytics(commands.Cog):
                 return DB.playerstats[uuid_index]["Servers"].index(D)
         return None
 
+    # DateTime Stuff ------------------------------------------------------------------------------------------------
+
+    def str_to_dt(self, dt_str):
+        """Converts string to datetime format"""
+        return datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')    
+
+    def td_format(self, td_object):
+        seconds = int(td_object.total_seconds())
+        periods = [
+            ('year',        60*60*24*365),
+            ('month',       60*60*24*30),
+            ('day',         60*60*24),
+            ('hour',        60*60),
+            ('minute',      60),
+            ('second',      1)
+        ]
+
+        strings=[]
+        for period_name, period_seconds in periods:
+            if seconds > period_seconds:
+                period_value , seconds = divmod(seconds, period_seconds)
+                has_s = 's' if period_value > 1 else ''
+                strings.append("%s %s%s" % (period_value, period_name, has_s))
+
+        return ", ".join(strings)
+
     def get_join_list_dt(self, uuid_index, server_index, serverName):
         """Breaks joins into dt list"""
         joinList = []
@@ -60,7 +82,7 @@ class Analytics(commands.Cog):
         for leave in DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"]:
             leaveList.append(self.str_to_dt(leave))
         return leaveList    
-
+    # Server Add/Remove ------------------------------------------------------------------------------------------------------------------------------------------------
     def add_server(self, servername):
         """Adds empty server stats to all players"""
         server_list = []
@@ -76,6 +98,11 @@ class Analytics(commands.Cog):
             player['Servers'].append(serv)
         print(f"ADDED: added server {servername}")
         DB.save_playerstats()
+
+    def rename_server():
+        pass
+
+    # ------------------------------------------------------------------------------------------------------------------------------------------------
 
     def add_player(self, username):
         """Adds player to json, copying servers from empty"""
@@ -146,8 +173,6 @@ class Analytics(commands.Cog):
             if serverName == server['name']:
                 response = DockingPort().send(server['channel_id'], "/list")
 
-
-
         if response:
             player_list = []
 
@@ -189,7 +214,6 @@ class Analytics(commands.Cog):
     @connect_event_handler.before_loop
     async def before_connect_event_handler(self):
         await self.bot.wait_until_ready() 
-
     # Playtime ------------------------------------------------------------------------------------------
     def handle_playtime(self, uuid, serverName='total'): #Needs renaming and refactoring
         """Calls calculation functions, returns appropriate playtime"""   
@@ -233,92 +257,84 @@ class Analytics(commands.Cog):
         else:
             return None
 
-    def calculate_playtime(self, leaveList, joinList, uuid_index, serverName, server_index):
+    def calculate_playtime(self, joinList, leaveList, uuid_index, serverName, server_index):
         """Computes playtimes from list of leave and join dt"""
         total = timedelta()
 
-        # Check if first leave if before first join
-        try:
-            if leaveList[0] < joinList[0]:
-                self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
-        except IndexError:
-            pass
+        # If more leaves than joins OR 2+ joins then leaves
+        if len(leaveList) > len(joinList) or len(joinList) > len(leaveList) + 1:
+            self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
 
-        # If there are 2 or more joins then leaves
-        if len(joinList) > len(leaveList) + 1:
-            self.check_false_leave(leaveList, joinList, uuid_index, serverName, server_index)
-
-        # If there are more leaves than joins
-        if len(leaveList) > len(joinList):
-            self.check_false_leave(leaveList, joinList, uuid_index, serverName, server_index)
-
-        # Calculate
-        for index in range(len(joinList)):
-            total += (leaveList[index] - joinList[index])
+        # Main calculate if there is a leave
+        if len(leaveList) > 0:
+            for index in range(len(leaveList)):
+                total += (leaveList[index] - joinList[index])
+        else:
+            index = -1
 
         # If there's 1 more join than leaves
         if len(joinList) == len(leaveList) + 1:
-            self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
             now = datetime.now()
-            total += (now - joinList[index])
+            total += (now - joinList[index+1])
 
         return total  
 
     def check_false_join(self, leaveList, joinList, uuid_index, serverName, server_index, online=None):
-        """Handles a false/missing join message"""
-
+        # Check if player is online
         if online == None:
             online = self.is_player_online(uuid_index, serverName)
 
         # If first leave is before first join, removes. [Missing Join]
         try:
             if leaveList[0] < joinList[0]:
+                leaveList.pop(0)
                 DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop(0)
-        except IndexError:
-            try: 
+        except IndexError: 
+            try:  #Catches leaves without joins
                 if leaveList[0]:
+                    leaveList.pop(0)
                     DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop(0)
             except IndexError:
                 pass
+
+        # Ones --------------------------------------------------------------------------------------------------------------------
         try:
             # Check if most recent is a join and player is offline [Extra Join]
             if joinList[-1] > leaveList[-1] and not online:
                 # Remove previous join message
+                joinList.pop()
                 DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop()
 
             # Check if most recent is a leave and player is online [Missing Join]
             elif leaveList[-1] > joinList[-1] and online:
                 # Add join at time of discovery
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(str(datetime.now()))
+                string = str(datetime.now())
+                joinList.append(string)
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(string)
         except IndexError:
-            pass
-    
-    def check_false_leave(self, leaveList, joinList, uuid_index, serverName, server_index, online=None):
-        """Handles a false/missing leave message""" 
-        if online == None: 
-            online = self.is_player_online(uuid_index, serverName)
-        
-        try:
+            pass  
+        # Twos --------------------------------------------------------------------------------------------------------------------
+        try: 
             # If two most recent are leaves and the player is not online [Extra Leave]
             if leaveList[-1] > joinList[-1] and leaveList[-2] > joinList[-1]:
                 # Remove most recent leave
+                leaveList.pop()
                 DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop()
-                if online: 
-                    # Calls check_false_join, adding join at time discovered
-                    self.check_false_join(leaveList, joinList, uuid_index, serverName, online)                
-
+      
             # If two most recent are joins and player is online [Missing Leave] 
             elif joinList[-1] > leaveList[-1] and joinList[-2] > leaveList[-1]:
                 if online:
                     # Remove second most recent join
+                    joinList.pop(-2)
                     DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop(-2)
 
                 else:
                     # Otherwise remove first, falsejoin 
+                    joinList.pop()
                     DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop()
-                    self.check_false_join(leaveList, joinList, uuid_index, serverName, online)
         except IndexError:
-            pass
+            pass  
+        
     # Commands -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
     @commands.command(name='playtime',help='Returns playtime on pineservers. >playtime <account-name> <server-name>, otherwise returns total of player.',brief='Returns total playtime on pineservers')
@@ -339,15 +355,17 @@ class Analytics(commands.Cog):
         # Total
         if server == None:
             total = self.handle_playtime(uuid)
-            await ctx.send(f"{name} has played {total} across all servers.")
+            await ctx.send(f"{name} has played for `{self.td_format(total)}` across all servers.")
             return
 
         # Specific Server Playtime
         else: 
-            val = self.handle_playtime(uuid, server)
-            if val:
-                await ctx.send(f"{name} has played {val} on {server}")
+            single = self.handle_playtime(uuid, server)
+            if single:
+                await ctx.send(f"{name} has played for `{self.td_format(single)}` on {server}")
                 return
+            elif single == timedelta():
+                await ctx.send(f"{name} hasn't played on {server}.")
             else:
                 await ctx.send(f"Server not found.")
     
