@@ -47,16 +47,12 @@ class DockingPort:
                 # Break apart by newline    
                 resp_str_l = resp_str.strip().split('\n')        
                 for msg in resp_str_l:
-                    
-                    # Switch between versions
-                    if version == "mc_1.18.2":
-
-                        post = MessageFilter(i).filter_mc_1_18(msg)
-                        if post:
-                            # Analytics
-                            if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                                DB.add_connect_event(post, channel['name'])
-                            DB.get_msg_queue(i).put(post)
+                    post = MessageFilter(i).filter(msg, version)
+                    if post:
+                        # Analytics
+                        if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
+                            DB.add_connect_event(post, channel['name'])
+                        DB.get_msg_queue(i).put(post)
                 i+=1
                 break
             i+=1

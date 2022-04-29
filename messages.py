@@ -4,13 +4,27 @@ By: Emmett Peck
 Message filtering and dictionary building from serverlogs for various MC versions/games
 """
 from enum import Enum
+from posixpath import split
 from database import DB
+
+def split_first(split_str, character):
+    """split_first('Hi[Emmett]','[') --> ['Hi','Emmett]']"""
+    index = split_str.find(character)
+    before, after = "",""
+    for i in range(len(split_str)):
+        if i < index:
+            before += split_str[i]
+        if i > index:
+            after += split_str[i]
+
+    return [before, after]
 
 class MessageType(Enum):
     MSG = 1
     JOIN = 2
     LEAVE = 3
     DEATH = 4
+    RESEARCH = 5
 
 class Death:
     """Filters death messages using startswith and possible MC death messages"""
@@ -61,8 +75,18 @@ class MessageFilter:
             print("ERROR: out_str fallthrough")
         return out_str
 
+    # Filter Version Handler --------------------------------------------------------------------------
+    def filter(self, in_str, version):
+        """Filters log by container version"""
+
+        # Switch between versions
+        if version == "mc_1.18.2":
+            return self.filter_mc(in_str)
+        elif version == "factorio":
+            return self.filter_factorio(in_str)
+    
     # Filters ------------------------------------------------------------------------------------------------
-    def filter_mc_1_18(self, in_str):
+    def filter_mc(self, in_str):
         """Filters Deaths, Messages, Leaves/Joins from Minecraft 1.18 server log and returns as a dict"""
 
         # Fingerprint Filtering
@@ -96,3 +120,29 @@ class MessageFilter:
                     dm = Death(split_line[1])
                     if dm.is_death():
                         return self.get_msg_dict(time, dm.player, dm.stripped_msg, MessageType.DEATH)
+    
+    def filter_factorio(self, in_str):
+        if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
+
+            time = split_first(in_str,'[')[0].strip()
+            in_brackets = split_first(split_first(in_str,'[')[1],']')[0]
+            after_brackets = split_first(in_str,']')[1]
+            if in_brackets == "CHAT":
+                type = MessageType.MSG
+                name = split_first(after_brackets,':')[0].strip()
+                msg = split_first(after_brackets,':')[1]
+
+                return self.get_msg_dict(time, name, msg, type)
+
+            elif in_brackets == "JOIN":
+                type = MessageType.JOIN
+                msg = 'joined the game.'
+                name = after_brackets.strip().split(' ')[0] # First Word
+
+                return self.get_msg_dict(time, name, msg, type)
+            elif in_brackets == "LEAVE":
+                type = MessageType.LEAVE
+                msg = 'left the game.'
+                name = after_brackets.strip().split(' ')[0]
+
+                return self.get_msg_dict(time, name, msg, type)

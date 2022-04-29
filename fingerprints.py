@@ -38,6 +38,8 @@ class FingerPrints:
 
         # Catch to set to own fingerprintdb
         if database_list == None:
+            if self.fingerprintDB == None:
+                return True
             database_list = self.fingerprintDB
 
         try:

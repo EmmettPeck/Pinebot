@@ -52,7 +52,9 @@ class Utilities(commands.Cog):
     async def server_list(self, ctx):
         message = f"""``Server List``\n```Name    | IP                 | Description\n"""
         for dict in DB.get_containers():
-            
+            # Don't display hidden servers
+            if dict.get("hidden"):
+                continue
             # Format Spacing
             ni = len(dict.get("name"))
             name_spacing = ""

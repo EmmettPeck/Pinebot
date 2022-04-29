@@ -362,7 +362,7 @@ class Analytics(commands.Cog):
         else: 
             single = self.handle_playtime(uuid, server)
             if single:
-                await ctx.send(f"{name} has played for `{self.td_format(single)}` on {server}")
+                await ctx.send(f"{name} has played for `{self.td_format(single)}` on {server}.")
                 return
             elif single == timedelta():
                 await ctx.send(f"{name} hasn't played on {server}.")
