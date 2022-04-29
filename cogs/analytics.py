@@ -12,6 +12,27 @@ from username_to_uuid import UsernameToUUID
 from messages import MessageType
 from datetime import timedelta  
 
+# Server Add/Remove ------------------------------------------------------------------------------------------------------------------------------------------------
+def add_server(servername):
+    """Adds empty server stats to all players"""
+    server_list = []
+    # Lists all servers from first entry in DB
+    for item in DB.playerstats[0]["Servers"]:
+        server_list.extend(item.keys())
+
+    # Catch if server already exists
+    if servername in server_list:
+        print(f"ERROR: add_server {servername} already present.")
+        return False
+
+    for player in DB.playerstats:
+        serv = {f'{servername}':{'Total Playtime':[],'Last Computed':[], 'Joins':[], 'Leaves':[]}}
+        player['Servers'].append(serv)
+    print(f"ADDED: added server {servername}")
+    DB.save_playerstats()
+    return True
+
+# =====================================================================================================================================================================
 class Analytics(commands.Cog):
 
     def __init__(self, bot):
@@ -82,26 +103,6 @@ class Analytics(commands.Cog):
         for leave in DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"]:
             leaveList.append(self.str_to_dt(leave))
         return leaveList    
-    # Server Add/Remove ------------------------------------------------------------------------------------------------------------------------------------------------
-    def add_server(self, servername):
-        """Adds empty server stats to all players"""
-        server_list = []
-        for item in DB.playerstats[-1]["Servers"]:
-            server_list.extend(item.keys())
-
-        if servername in server_list:
-            print(f"ERROR: add_server {servername} already present.")
-            return 
-
-        for player in DB.playerstats:
-            serv = {f'{servername}':{'Total Playtime':[],'Last Computed':[], 'Joins':[], 'Leaves':[]}}
-            player['Servers'].append(serv)
-        print(f"ADDED: added server {servername}")
-        DB.save_playerstats()
-
-    def rename_server():
-        pass
-
     # ------------------------------------------------------------------------------------------------------------------------------------------------
 
     def add_player(self, username):

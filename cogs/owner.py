@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 
+import analytics
 from database import DB
 
 class OwnerCog(commands.Cog):
@@ -26,10 +27,15 @@ class OwnerCog(commands.Cog):
         """Adds server name, dockerID, IP, description tied to current channel"""
         sDict = {"name": server_name, "version": version, "channel_id": ctx.channel.id, "docker_name": docker_id, "ip": ip, "description": description}
         
+        tf = analytics.add_server(server_name)
         DB.add_container(sDict)
 
-        await ctx.send(f"Server {sDict} Added Successfully")
-        print(f"Server {sDict} Added Successfully")
+        if tf:
+            await ctx.send(f"Server {sDict} Added Successfully")
+            print(f"Server {sDict} Added Successfully")
+        elif not tf:
+            await ctx.send(f"Server {sDict} Added Successfully. Analytics name linked.")
+            print(f"Server {sDict} Added Successfully. Present {server_name} linked to {docker_id}")
 
     # Remove server
     @commands.command(name="remserver", help="Removes dictionary assigned to channel")
@@ -40,11 +46,13 @@ class OwnerCog(commands.Cog):
         try:
             rDict = next(item for item in list if item["channel_id"] == ctx.channel.id)
             popID = list.index(rDict)
+            name = list[popID]["name"]
             DB.remove_container(popID)
         except:
             await ctx.send(f"Server {rDict} Removal Failed")
             print(f"Server {rDict} Removal Failed")
         else:
+            analytics.rename_server(name)
             await ctx.send(f"Server {rDict} Removed Successfully")
             print(f"Server {rDict} Removed Successfully")
             self.cogs_reload()

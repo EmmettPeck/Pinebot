@@ -80,7 +80,7 @@ class MessageFilter:
         """Filters log by container version"""
 
         # Switch between versions
-        if version == "mc_1.18.2":
+        if version == "mc":
             return self.filter_mc(in_str)
         elif version == "factorio":
             return self.filter_factorio(in_str)
