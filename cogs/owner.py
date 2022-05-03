@@ -1,8 +1,8 @@
 import discord
 from discord.ext import commands
 
-import analytics
 from database import DB
+import cogs.analytics as analytics
 
 class OwnerCog(commands.Cog):
 
