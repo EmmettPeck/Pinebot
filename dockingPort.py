@@ -4,6 +4,7 @@ By: Emmett Peck
 Handles interraction with docker game servers
 """
 
+from http import client
 import subprocess
 
 import docker
@@ -20,9 +21,15 @@ class DockingPort:
         for channel in channels: 
             if channelID == channel.get('channel_id'):
                 dockerName = channel.get('docker_name')
+
+                # Attach Container
+                client = docker.from_env()
+                container = client.containers.get(dockerName)
+
+                # Send Command, and decipher tuple
                 filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
-                resp_bytes = subprocess.Popen(f"docker exec {dockerName} rcon-cli '{filtered_command}'", stdout=subprocess.PIPE, shell=True).stdout.read()
-                resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                resp_bytes = container.exec_run(f"rcon-cli '{filtered_command}'")
+                resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
                 
                 if logging:
                     print(f"\nSent command /{command} to {dockerName}")
@@ -42,8 +49,15 @@ class DockingPort:
             if channelID == channel.get('channel_id'):
                 dockerName = channel.get('docker_name') 
                 version = channel.get("version")
-                resp_bytes = subprocess.Popen(f'docker logs {dockerName} --tail 10', stdout=subprocess.PIPE, shell=True).stdout.read()
+
+                # Attach Container & tail logs
+                client = docker.from_env()
+                container = client.containers.get(dockerName)
+                resp_bytes = container.logs(tail=10)
+
+                # Decode
                 resp_str = resp_bytes.decode(encoding="utf-8", errors="ignore")
+                
                 # Break apart by newline    
                 resp_str_l = resp_str.strip().split('\n')        
                 for msg in resp_str_l:
