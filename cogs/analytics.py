@@ -38,8 +38,9 @@ class Analytics(commands.Cog):
         """Returns index of specific serverName in playerstats"""
         uuid_index = self.get_uuid_index("")
 
+        # Analytics names MUST match case sensitive Container Names (titletext)
         for D in DB.playerstats[uuid_index]["Servers"]:
-            if serverName in D.keys():### ERROR TODO Here? in D doesn't refer to keys? WHY IS IT NONE
+            if serverName in D.keys():
                 return DB.playerstats[uuid_index]["Servers"].index(D)
         return None
 
@@ -134,9 +135,9 @@ class Analytics(commands.Cog):
             server_index = self.get_server_index(serverName)
             
             if online:
-                DB.playerstats[uuid_index]["Servers"][server_index][str(serverName)]["Joins"].append(str(Time))
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(str(Time))
             else:
-                DB.playerstats[uuid_index]["Servers"][server_index][str(serverName)]["Leaves"].append(str(Time))
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].append(str(Time))
         except ValueError:
             print(f'ValueError: "{uuid}" not a valid UUID.')
         except UnboundLocalError:
@@ -151,7 +152,9 @@ class Analytics(commands.Cog):
         # Match servername to channel ID, then get list 
         for server in DB.get_containers():
             if serverName == server['name']:
-                response = dockingPort.DockingPort().send(server['channel_id'], "/list")
+                if server['version'] == 'mc':
+                    response = dockingPort.DockingPort().send(server['channel_id'], "/list")
+                    break
 
         if response:
             player_list = []
@@ -166,7 +169,6 @@ class Analytics(commands.Cog):
             # None detection
             if player_list == ['']:
                 return None
-
             return player_list
         return None
 
@@ -177,7 +179,6 @@ class Analytics(commands.Cog):
         if player_list:
             for player in player_list:
                 if self.get_player_uuid(player) == DB.playerstats[uuid_index]["UUID"]:
-                    print (f"is_player_online: {player} is online {serverName}")
                     return True
             return False
         return None
@@ -245,9 +246,9 @@ class Analytics(commands.Cog):
 
         # Running every check for the hell of it
 
-        # If more leaves than joins OR 2+ joins then leaves
-        #if len(leaveList) > len(joinList) or len(joinList) > len(leaveList) + 1:
-        self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
+        # If more leaves than joins || 2+ joins then leaves || leaves == joins || leaves > joins
+        if (len(leaveList) > len(joinList)) or (len(joinList) > len(leaveList) + 1) or (len(leaveList) == len(joinList)) or (len(leaveList)>len(joinList)):
+            self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
 
         # Main calculate if there is a leave
         if len(leaveList) > 0:
@@ -268,53 +269,16 @@ class Analytics(commands.Cog):
         if online == None:
             online = self.is_player_online(uuid_index, serverName)
 
-        # If first leave is before first join, removes. [Missing Join]
-        try:
-            if leaveList[0] < joinList[0]:
-                leaveList.pop(0)
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop(0)
-        except IndexError: 
-            try:  #Catches leaves without joins
-                if leaveList[0]:
-                    leaveList.pop(0)
-                    DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop(0)
-            except IndexError:
-                pass
-
-        # If player is online, and joins = leaves [Missing Join]
-        '''try:
-            if len(joinList) == len(leaveList) and online:
-                # Add Join At Time of Discovery
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(str(datetime.now()))
-        except IndexError:
-            pass'''
-
-        # Ones --------------------------------------------------------------------------------------------------------------------
-        try:
-            # Check if most recent is a join and player is offline [Extra Join]
-            if joinList[-1] > leaveList[-1] and not online:
-                # Remove previous join message
-                joinList.pop()
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop()
-
-            # Check if most recent is a leave and player is online [Missing Join]
-            elif leaveList[-1] > joinList[-1] and online:
-                # Add join at time of discovery
-                string = str(datetime.now())
-                joinList.append(string)
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(string)
-        except IndexError:
-            pass  
         # Twos --------------------------------------------------------------------------------------------------------------------
         try: 
             # If two most recent are leaves and the player is not online [Extra Leave]
-            if leaveList[-1] > joinList[-1] and leaveList[-2] > joinList[-1]:
+            if (leaveList[-1] > joinList[-1]) and (leaveList[-2] > joinList[-1]) and (not online):
                 # Remove most recent leave
                 leaveList.pop()
                 DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop()
       
             # If two most recent are joins and player is online [Missing Leave] 
-            elif joinList[-1] > leaveList[-1] and joinList[-2] > leaveList[-1]:
+            elif (joinList[-1] > leaveList[-1]) and (joinList[-2] > leaveList[-1]):
                 if online:
                     # Remove second most recent join
                     joinList.pop(-2)
@@ -326,6 +290,36 @@ class Analytics(commands.Cog):
                     DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop()
         except IndexError:
             pass  
+        
+        # Ones --------------------------------------------------------------------------------------------------------------------
+        try:
+            # Check if most recent is a join and player is offline [Extra Join]
+            if (joinList[-1] > leaveList[-1]) and (not online):
+                # Remove previous join message
+                joinList.pop()
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop()
+
+            # Check if most recent is a leave and player is online [Missing Join]
+            elif leaveList[-1] > joinList[-1] and online:
+                # Add join at time of discovery
+                string = str(datetime.now())
+                joinList.append(string)
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(string)
+        except IndexError:
+            pass
+
+        # If first leave is before first join, removes. [Missing Join]-------------------------------------------------------------
+        try:
+            if leaveList[0] < joinList[0]:
+                leaveList.pop(0)
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop(0)
+        except IndexError: 
+            try:  #Catches leaves without joins
+                if leaveList[0]:
+                    leaveList.pop(0)
+                    DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].pop(0)
+            except IndexError:
+                pass
         
     # Commands -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

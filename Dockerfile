@@ -16,4 +16,4 @@ ADD cogs/* cogs/
 ADD *.py /
 
 # Start
-CMD python3 /main.py
+CMD ["python3", "-u", "main.py"]
