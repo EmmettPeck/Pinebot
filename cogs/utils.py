@@ -47,6 +47,17 @@ class Utilities(commands.Cog):
         if isinstance(error, CheckFailure):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
 
+    # List -------------------------------------------------------------------------------------------------------------------------------------------------------
+    @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
+    async def list(self, ctx):
+        response = DockingPort().send(ctx.channel.id, "/list")
+        
+        await ctx.message.delete()
+        if response:
+            await ctx.send(response)
+        else:
+            await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
+
     # ServerList --------------------------------------------------------------------------------------------------------------------------------------------------
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", brief="Lists all pineserver.net servers")
     async def server_list(self, ctx):
@@ -72,6 +83,7 @@ class Utilities(commands.Cog):
             message += dict.get("name") + name_spacing + "| " + dict.get("ip") + ip_spacing + "| " + dict.get("description")+ "\n"
 
         message +="```"
+        await ctx.message.delete()
         await ctx.send(message)
     # --------------------------------------------------------------------------------------------------------------------------------------------------
 

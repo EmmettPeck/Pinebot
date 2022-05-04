@@ -242,9 +242,11 @@ class Analytics(commands.Cog):
         """Computes playtimes from list of leave and join dt"""
         total = timedelta()
 
+        # Running every check for the hell of it
+
         # If more leaves than joins OR 2+ joins then leaves
-        if len(leaveList) > len(joinList) or len(joinList) > len(leaveList) + 1:
-            self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
+        #if len(leaveList) > len(joinList) or len(joinList) > len(leaveList) + 1:
+        self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
 
         # Main calculate if there is a leave
         if len(leaveList) > 0:
@@ -254,7 +256,7 @@ class Analytics(commands.Cog):
             index = -1
 
         # If there's 1 more join than leaves
-        if len(joinList) == len(leaveList) + 1:
+        if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
             now = datetime.now()
             total += (now - joinList[index+1])
 
@@ -341,13 +343,16 @@ class Analytics(commands.Cog):
 
         # Specific Server Playtime
         else: 
-            single = self.handle_playtime(uuid, server)
+            single = self.handle_playtime(uuid, server.title())
             if single:
-                await ctx.send(f"{name} has played for `{self.td_format(single)}` on {server}.")
+                await ctx.message.delete()
+                await ctx.send(f"{name} has played for `{self.td_format(single)}` on {server.title()}.")
                 return
             elif single == timedelta():
-                await ctx.send(f"{name} hasn't played on {server}.")
+                await ctx.message.delete()
+                await ctx.send(f"{name} hasn't played on {server.title()}.")
             else:
+                await ctx.message.delete()
                 await ctx.send(f"Server not found.")
     
 def setup(bot):

@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from database import DB
+from database import *
 import cogs.analytics as analytics
 
 class OwnerCog(commands.Cog):
@@ -27,7 +27,7 @@ class OwnerCog(commands.Cog):
         """Adds server name, dockerID, IP, description tied to current channel"""
         sDict = {"name": server_name, "version": version, "channel_id": ctx.channel.id, "docker_name": docker_id, "ip": ip, "description": description}
         
-        tf = analytics.add_server(server_name)
+        tf = add_server(server_name)
         DB.add_container(sDict)
 
         if tf:
