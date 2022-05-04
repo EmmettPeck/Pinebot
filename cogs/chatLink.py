@@ -56,7 +56,8 @@ class ChatLink(commands.Cog):
         for channel in DB.get_containers():
             cid = channel.get("channel_id")
             if message.channel.id == cid:
-                
+                # Catch non-mc messages
+                if channel.get("version") != "mc": return
                 # Send message to mc server! Use colored messages?
                 item = f"<{message.author.name}> {message.content}"
                 DockingPort().send(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}',False)

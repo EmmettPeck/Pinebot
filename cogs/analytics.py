@@ -1,6 +1,5 @@
 """A class used to track player activity and log it for analytics"""
 
-from ntpath import join
 import sys
 from datetime import datetime
 from discord.ext import tasks, commands
@@ -159,9 +158,11 @@ class Analytics(commands.Cog):
 
             # Strip Online:
             stripped = response.split("online:")
-            for player in stripped[1].split(','):
-                player_list.append(player.strip())
-
+            try:
+                for player in stripped[1].split(','):
+                    player_list.append(player.strip())
+            except IndexError:
+                return None
             # None detection
             if player_list == ['']:
                 return None
@@ -182,7 +183,7 @@ class Analytics(commands.Cog):
         return None
 
     # Connect Event Queue -------------------------------------------------------------------------------
-    @tasks.loop(seconds=3)
+    @tasks.loop(seconds=2)
     async def connect_event_handler(self):
         q = DB.get_connect_queue()
         while not q.qsize() == 0:
@@ -280,6 +281,14 @@ class Analytics(commands.Cog):
             except IndexError:
                 pass
 
+        # If player is online, and joins = leaves [Missing Join]
+        '''try:
+            if len(joinList) == len(leaveList) and online:
+                # Add Join At Time of Discovery
+                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(str(datetime.now()))
+        except IndexError:
+            pass'''
+
         # Ones --------------------------------------------------------------------------------------------------------------------
         try:
             # Check if most recent is a join and player is offline [Extra Join]
@@ -338,6 +347,7 @@ class Analytics(commands.Cog):
         # Total
         if server == None:
             total = self.handle_playtime(uuid)
+            await ctx.message.delete()
             await ctx.send(f"{name} has played for `{self.td_format(total)}` across all servers.")
             return
 
