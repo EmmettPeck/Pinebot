@@ -1,7 +1,8 @@
-#   Pinebot
-#   By: Emmett Peck
-"""   A simple discord bot to allow remote whitelisting through discord.
-      To be run on linux server alongside dockerized servers."""
+""" 
+Pinebot
+By: Emmett Peck
+A simple discord bot to allow remote whitelisting through discord. To be run on linux server alongside dockerized servers.
+"""
 
 from discord.ext import commands
 import os

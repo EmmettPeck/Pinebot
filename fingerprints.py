@@ -1,4 +1,8 @@
-"""Log and filter out past 100 non-unique fingerprints"""
+"""
+fingerprints.py
+By: Emmett Peck
+Log and filter out past 100 non-unique fingerprints per class
+"""
 
 import json
 import hashlib
@@ -17,7 +21,7 @@ class FingerPrints:
         except FileNotFoundError:
             with open(rf"data/hash_{self.name}.json", 'w+') as write_file:
                 json.dump([], write_file, indent = 2)
-            self.load_fingerprintDB()
+            return self.load_fingerprintDB()
     
     def save_fingerprintDB(self):
         """Saves the previous 100 message hashes"""

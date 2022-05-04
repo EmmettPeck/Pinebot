@@ -101,7 +101,7 @@ class MessageFilter:
 
                 # Message Detection using <{user}> {msg}
                 if '<' and '>' in split_line[1]:
-                    msg  = split_line[1].split('> ', 1)[1]
+                    msg  = split_first(split_line[1],'> ')[1]
                     user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')]
                     return self.get_msg_dict(time, user, msg, MessageType.MSG)
 

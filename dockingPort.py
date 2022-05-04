@@ -4,11 +4,6 @@ By: Emmett Peck
 Handles interraction with docker game servers
 """
 
-from http import client
-import subprocess
-
-import docker
-
 from messages import MessageFilter, MessageType
 from database import DB
 
@@ -23,8 +18,7 @@ class DockingPort:
                 dockerName = channel.get('docker_name')
 
                 # Attach Container
-                client = docker.from_env()
-                container = client.containers.get(dockerName)
+                container = DB.client.containers.get(dockerName)
 
                 # Send Command, and decipher tuple
                 filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
@@ -40,19 +34,16 @@ class DockingPort:
     def read(self, channelID):
         """Reads logs and updates queue"""
         resp_str = ""
-        return_list = []
-        cont = DB.get_containers()
 
         # Filters for channel, then converts tail 10 of the logs to a string
         i = 0
-        for channel in cont:
+        for channel in DB.get_containers():
             if channelID == channel.get('channel_id'):
                 dockerName = channel.get('docker_name') 
                 version = channel.get("version")
 
                 # Attach Container & tail logs
-                client = docker.from_env()
-                container = client.containers.get(dockerName)
+                container = DB.client.containers.get(dockerName)
                 resp_bytes = container.logs(tail=10)
 
                 # Decode

@@ -1,6 +1,8 @@
 import json
 import queue
 
+import docker
+
 from fingerprints import FingerPrints
 
 def singleton(cls):
@@ -19,6 +21,7 @@ class DB:
         self.build_msg_queues()
         self.build_fingerprints()
 
+        self.client = docker.from_env()
         # Analytics
         self.connect_queue = queue.Queue()
         self.playerstats = self.load_playerstats()
@@ -103,4 +106,26 @@ class DB:
     def create_playerstats(self):
         """Creates empty playerstats.json structure""" 
         self.playerstats = [{'UUID':'','Servers':[]}]
+        for server in self.containers:
+            add_server(server['name'])
         self.save_playerstats()
+
+# Server Add/Remove ------------------------------------------------------------------------------------------------------------------------------------------------
+def add_server(servername):
+    """Adds empty server stats to all players"""
+    server_list = []
+    # Lists all servers from first entry in DB
+    for item in DB.playerstats[0]["Servers"]:
+        server_list.extend(item.keys())
+
+    # Catch if server already exists
+    if servername in server_list:
+        print(f"ERROR: add_server {servername} already present.")
+        return False
+
+    for player in DB.playerstats:
+        serv = {f'{servername}':{'Total Playtime':[],'Last Computed':[], 'Joins':[], 'Leaves':[]}}
+        player['Servers'].append(serv)
+    print(f"ADDED: added server {servername}")
+    DB.save_playerstats()
+    return True
