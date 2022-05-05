@@ -1,10 +1,12 @@
 """A class used to track player activity and log it for analytics"""
 
+from ast import Index
+from ntpath import join
 import sys
 from datetime import datetime
 from discord.ext import tasks, commands
 
-sys.path.append("../Pinebot")
+sys.path.append("../app")
 import dockingPort
 from database import DB
 from username_to_uuid import UsernameToUUID
@@ -240,22 +242,44 @@ class Analytics(commands.Cog):
         else:
             return None
 
+    def fix_playtime(self, joinList, leaveList, uuid_index, serverName, server_index):
+        # For each leave, match join - If leave is after paired join, remove leave
+        for i in range(len(leaveList)):
+            try:
+                if leaveList[i] > joinList[i]:
+                    leaveList.pop(i)
+                    DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop(i)
+            except IndexError:
+                print(f"Fix_Playtime IndexError: {uuid_index} {serverName} with {len(joinList)} joins and {len(leaveList)} leaves.")
+                return
+
     def calculate_playtime(self, joinList, leaveList, uuid_index, serverName, server_index):
         """Computes playtimes from list of leave and join dt"""
         total = timedelta()
-
-        # Running every check for the hell of it
 
         # If more leaves than joins || 2+ joins then leaves || leaves == joins || leaves > joins
         if (len(leaveList) > len(joinList)) or (len(joinList) > len(leaveList) + 1) or (len(leaveList) == len(joinList)) or (len(leaveList)>len(joinList)):
             self.check_false_join(leaveList, joinList, uuid_index, serverName, server_index)
 
         # Main calculate if there is a leave
-        if len(leaveList) > 0:
-            for index in range(len(leaveList)):
-                total += (leaveList[index] - joinList[index])
-        else:
-            index = -1
+        try:
+            if len(leaveList) > 0:
+                for index in range(len(leaveList)):
+                    total += (leaveList[index] - joinList[index])
+            else:
+                index = -1
+        except IndexError:
+            print(f"Index Error in Calculate Playtime: {uuid_index} {serverName} with {len(joinList)} joins and {len(leaveList)} leaves.")
+            self.fix_playtime(joinList, leaveList, uuid_index, serverName, server_index)
+            # Retry --- Could be refactored into function
+            try:
+                if len(leaveList) > 0:
+                    for index in range(len(leaveList)):
+                        total += (leaveList[index] - joinList[index])
+                else:
+                    index = -1
+            except IndexError:
+                print(f"Second Index Error in Calculate Playtime: {uuid_index} {serverName} with {len(joinList)} joins and {len(leaveList)} leaves.")
 
         # If there's 1 more join than leaves
         if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
@@ -271,7 +295,7 @@ class Analytics(commands.Cog):
 
         # Twos --------------------------------------------------------------------------------------------------------------------
         try: 
-            # If two most recent are leaves and the player is not online [Extra Leave]
+            # If two most recent are leaves and the player is offline [Extra Leave]
             if (leaveList[-1] > joinList[-1]) and (leaveList[-2] > joinList[-1]) and (not online):
                 # Remove most recent leave
                 leaveList.pop()

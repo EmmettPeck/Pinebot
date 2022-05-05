@@ -35,7 +35,7 @@ class DB:
     
     def load_role_whitelist(self):
         # Load role_Whitelist.json
-        with open(r"data/role_Whitelist.json", 'r') as read_file:
+        with open(r"../data/role_Whitelist.json", 'r') as read_file:
             self.role_Whitelist = json.load(read_file)
 
     # Docker Containers ---------------------------------------------------------
@@ -44,11 +44,11 @@ class DB:
         return self.containers
         
     def load_containers(self): 
-        with open(r"data/containers.json", 'r') as read_file:
+        with open(r"../data/containers.json", 'r') as read_file:
             self.containers = json.load(read_file)
 
     def save_containers(self):
-        with open(r"data/containers.json", 'w') as write_file:
+        with open(r"../data/containers.json", 'w') as write_file:
             json.dump(self.containers, write_file, indent = 2)
 
     def add_container(self, sDict):
@@ -91,7 +91,7 @@ class DB:
     def load_playerstats(self):
         """Load playerstats from playerstats.json"""
         try:
-            with open("data/playerstats.json") as f:
+            with open("../data/playerstats.json") as f:
                 e = json.load(f)
         except FileNotFoundError:
             return None
@@ -100,7 +100,7 @@ class DB:
 
     def save_playerstats(self):
         """Saves playerstats to playerstats.json"""
-        with open("data/playerstats.json", 'w') as f:
+        with open("../data/playerstats.json", 'w') as f:
             json.dump(self.playerstats, f, indent = 2)
     
     def create_playerstats(self):

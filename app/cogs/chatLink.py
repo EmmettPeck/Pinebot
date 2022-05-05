@@ -23,6 +23,14 @@ class ChatLink(commands.Cog):
 
     # Chat-Link
     # ------------------------------------------------------------------
+    # Header Updating ------------------------------------------------------------------
+        # Docker Status
+        # Playercount
+            # Version Based (MC List vs Factorio[Generic] version types)
+        # MOTD?
+        # Update w/ Taskloop
+
+    # Server -> Discord  -----------------------------------------------------------------------
     @tasks.loop(seconds=1)
     async def pass_message(self):
         # For each server, set outchannel, get items from queue
@@ -46,6 +54,7 @@ class ChatLink(commands.Cog):
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 
 
+    # Discord -> Server -----------------------------------------------------------------------
     @commands.Cog.listener("on_message")
     async def on_disc_message(self, message):
         # Check to make sure it isn't a bot message or command

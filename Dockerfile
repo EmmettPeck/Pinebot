@@ -12,8 +12,7 @@ RUN pip install discord
 
 # Copy Files
 ADD .env /
-ADD cogs/* cogs/
-ADD *.py /
+ADD app/ app/
 
 # Start
-CMD ["python3", "-u", "main.py"]
+CMD ["python3", "-u", "app/main.py"]

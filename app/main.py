@@ -3,14 +3,16 @@ Pinebot
 By: Emmett Peck
 A simple discord bot to allow remote whitelisting through discord. To be run on linux server alongside dockerized servers.
 """
-
+import sys
 from discord.ext import commands
 import os
 from dotenv import load_dotenv
 
+sys.path.append("./app")
 from database import DB
 
 load_dotenv()
+
 
 def get_prefix(bot, message):
     """A callable Prefix for our bot. This could be edited to allow per server prefixes."""

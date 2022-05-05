@@ -1,8 +1,6 @@
 """A cog for discord.py that carries an assortment of utility commands for Pineserver"""
-import discord
 from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
-import json
 
 from database import DB
 from dockingPort import DockingPort
