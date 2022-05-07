@@ -211,9 +211,14 @@ class Analytics(commands.Cog):
             print(f'UnboundLocalError: "{serverName}" not a valid server.')
         
     # Connect Event Queue -------------------------------------------------------------------------------
-    @tasks.loop(seconds=2)
+    @tasks.loop(seconds=1)
     async def connect_event_handler(self):
         q = DB.get_connect_queue()
+
+        # Quick Return
+        if q.qsize() == 0: return
+
+        # Calculate
         f = False
         while not q.qsize() == 0:
             f = True
