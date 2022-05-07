@@ -1,7 +1,5 @@
 """A class used to track player activity and log it for analytics"""
 
-from ast import Index
-from ntpath import join
 import sys
 from datetime import datetime
 from discord.ext import tasks, commands

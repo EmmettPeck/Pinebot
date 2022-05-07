@@ -8,7 +8,7 @@ from posixpath import split
 from database import DB
 
 def split_first(split_str, character):
-    """split_first('Hi[Emmett]','[') --> ['Hi','Emmett]']"""
+    """Splits by first instance of character. split_first('Hi[Emmett]','[') --> ['Hi','Emmett]']"""
     index = split_str.find(character)
     before, after = "",""
     for i in range(len(split_str)):
@@ -19,12 +19,23 @@ def split_first(split_str, character):
 
     return [before, after]
 
+def get_between(in_str, beginning_char, end_char):
+    '''Gets text between first instance of beginning_char and first instance of end_char'''
+    string = ""
+    middle = split_first(in_str,beginning_char)[1]
+    for i in range(len(middle)):
+        if middle[i] == end_char:
+            return string
+        else:
+            string += middle[i]
+    return None
+
 class MessageType(Enum):
     MSG = 1
     JOIN = 2
     LEAVE = 3
     DEATH = 4
-    RESEARCH = 5
+    ACHIEVEMENT = 5
 
 class Death:
     """Filters death messages using startswith and possible MC death messages"""
@@ -70,6 +81,8 @@ class MessageFilter:
             out_str = f"```fix\n🚪 {user} {msg}\n```"
         elif item.get("type") == MessageType.DEATH:
             out_str = f"```💀 {user} {msg}```"
+        elif item.get("type") == MessageType.ACHIEVEMENT:
+            out_str = f"```🏆 {user} {msg}```"
         else:
             out_str = ""
             print("ERROR: out_str fallthrough")
@@ -92,57 +105,65 @@ class MessageFilter:
         # Fingerprint Filtering
         if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
 
-            # Filter for '] [Server thread/INFO]:'
-            split_line = in_str.split('] [Server thread/INFO]:')
+            # Ensure '[Server thread/INFO]:'
+            info_split = in_str.split('] [Server thread/INFO]',1)
+            if len(info_split) != 2:
+                return
 
-            # Separate and save time from messages
-            if len(split_line) == 2: 
-                time = split_line[0].split('[',1)[1]
+            # Separate time; break apart entry from info
+            entry = split_first(info_split[1],':')[1].strip()
+            time = split_first(info_split[0], '[')[1]
 
-                # Message Detection using <{user}> {msg}
-                if '<' and '>' in split_line[1]:
-                    msg  = split_first(split_line[1],'> ')[1]
-                    user = split_line[1][split_line[1].find('<')+1: split_line[1].find('> ')]
-                    return self.get_msg_dict(time, user, msg, MessageType.MSG)
+            # Message Detection using <{user}> {msg}
+            if (entry[0] == '<') and ('<' and '>' in entry):
+                msg  = split_first(entry,'> ')[1]
+                user = get_between(entry, '<','>')
+                return self.get_msg_dict(time, user, msg, MessageType.MSG)
 
-                # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
-                elif split_line[1].find(" joined the game") >= 0: 
-                    msg = "joined the game"
-                    user = split_line[1].split(msg)[0].strip()
-                    return self.get_msg_dict(time, user, msg, MessageType.JOIN)
-                elif split_line[1].find(" left the game") >= 0:
-                    msg = "left the game"
-                    user = split_line[1].split(msg)[0].strip()
-                    return self.get_msg_dict(time, user, msg, MessageType.LEAVE)
+            # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
+            elif entry.find(" joined the game") >= 0: 
+                msg = "joined the game"
+                user = entry.split(' ',1)[0]
+                return self.get_msg_dict(time, user, msg, MessageType.JOIN)
+            elif entry.find(" left the game") >= 0:
+                msg = "left the game"
+                user = entry.split(' ',1)[0]
+                return self.get_msg_dict(time, user, msg, MessageType.LEAVE)
 
-                # Death Message Detection
-                else:
-                    dm = Death(split_line[1])
-                    if dm.is_death():
-                        return self.get_msg_dict(time, dm.player, dm.stripped_msg, MessageType.DEATH)
-    
+            # Achievement Detection
+            elif entry.find("has made the advancement") >= 0:
+                user = entry.split(' ',1)[0]
+                msg = f" has made the advancement [{split_first(entry,'[')[1]}"
+                return self.get_msg_dict(time, user, msg, MessageType.ACHIEVEMENT)
+
+            # Death Message Detection
+            else:
+                dm = Death(entry)
+                if dm.is_death():
+                    return self.get_msg_dict(time, dm.player, dm.stripped_msg, MessageType.DEATH)
+
     def filter_factorio(self, in_str):
         if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
 
             time = split_first(in_str,'[')[0].strip()
             in_brackets = split_first(split_first(in_str,'[')[1],']')[0]
             after_brackets = split_first(in_str,']')[1]
+            
+            # Message
             if in_brackets == "CHAT":
                 type = MessageType.MSG
                 name = split_first(after_brackets,':')[0].strip()
                 msg = split_first(after_brackets,':')[1]
-
                 return self.get_msg_dict(time, name, msg, type)
-
+            # Join
             elif in_brackets == "JOIN":
                 type = MessageType.JOIN
                 msg = 'joined the game.'
-                name = after_brackets.strip().split(' ')[0] # First Word
-
+                name = after_brackets.strip().split(' ',1)[0] # First Word
                 return self.get_msg_dict(time, name, msg, type)
+            # Leave
             elif in_brackets == "LEAVE":
                 type = MessageType.LEAVE
                 msg = 'left the game.'
-                name = after_brackets.strip().split(' ')[0]
-
+                name = after_brackets.strip().split(' ',1)[0]
                 return self.get_msg_dict(time, name, msg, type)
