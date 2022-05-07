@@ -6,9 +6,6 @@ A cog for discord.py that incorporates
 from discord.ext import tasks, commands
 
 from messages import MessageFilter
-
-import queue # imported for using queue.Empty exception
-
 from database import DB
 from dockingPort import DockingPort
 
@@ -16,6 +13,11 @@ class ChatLink(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+        # Fingerprint All Old Messages
+        for server in DB.get_containers():
+            DockingPort().read(server.get("channel_id"), True)
+
         self.pass_message.start()
 
     def cog_unload(self):
@@ -35,8 +37,7 @@ class ChatLink(commands.Cog):
     async def pass_message(self):
         # For each server, set outchannel, get items from queue
         i = 0 #Server Number
-        channels = DB.get_containers()
-        for server in channels:
+        for server in DB.get_containers():
             id = server.get("channel_id")
             out_channel = self.bot.get_channel(id)
             q = DB.get_msg_queue(i)
@@ -69,6 +70,7 @@ class ChatLink(commands.Cog):
                 if channel.get("version") != "mc": return
                 # Send message to mc server! Use colored messages?
                 item = f"<{message.author.name}> {message.content}"
+                print(f" -Discord-: {item}")
                 DockingPort().send(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}',False)
 
 def setup(bot):
