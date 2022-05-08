@@ -176,13 +176,12 @@ class Analytics(commands.Cog):
                 print(f"Fatal IndexError is_recentest_join: Server:{serverName}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.now()}")
             return None
 
-    def add_connect_event(self,username,serverName,is_online):
+    def add_connect_event(self,username,serverName,is_online, Time):
         '''Adds Join/Leave event to UUID by ServerName'''
         uuid = self.get_player_uuid(username)
 
         # Check if player is in DB, if not, adds
         try:
-            Time = datetime.now()
             server_index = self.get_server_index(serverName)
             uuid_index = self.get_uuid_index(uuid)
             
@@ -225,7 +224,7 @@ class Analytics(commands.Cog):
                 is_online = True
             else:
                 is_online = False
-            self.add_connect_event(x['username'], x['server'], is_online)
+            self.add_connect_event(x['username'], x['server'], is_online, x['time'])
         if f: DB.save_playerstats()
     @connect_event_handler.before_loop
     async def before_connect_event_handler(self):

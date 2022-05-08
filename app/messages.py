@@ -3,8 +3,9 @@ messages.py
 By: Emmett Peck
 Message filtering and dictionary building from serverlogs for various MC versions/games
 """
+import discord
 from enum import Enum
-from posixpath import split
+from datetime import datetime
 from database import DB
 
 def split_first(split_str, character):
@@ -60,32 +61,30 @@ class MessageFilter:
     def __init__(self,i=None):
         self.i = i
 
-    def get_msg_dict(self, time, username, message, MessageType):
+    def get_msg_dict(self, username, message, MessageType, color):
         """Appends and prints messages to return_list as dictionaries"""
-        local_dict = {"time":time, "username":username, "message": message, "type": MessageType}
-        print (f" --- Time:{time}, User:{username}, Msg:{message}, Type:{MessageType}")
+        local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.now(), 'color': color}
+        print (f" --- Time:{local_dict['time']}, User:{username}, Msg:{message}, Type:{MessageType}")
         return local_dict
 
     # Format ------------------------------------------------------------------------------------------------
     def format_message(self, item):
         """Message Type Sort and Formatting """
-        #try:
         user = item.get("username")
         msg = item.get("message")
-        #except AttributeError:
-            #return None
-        #else:
-        if   item.get("type") == MessageType.MSG:
+        type = item.get("type")
+        out_str = ""
+
+        if type == MessageType.MSG:
             out_str = f"```yaml\n💬 <{user}> {msg}\n```"
-        elif item.get("type") == MessageType.JOIN or item.get("type") == MessageType.LEAVE:
+        elif type == MessageType.JOIN or item.get("type") == MessageType.LEAVE:
             out_str = f"```fix\n🚪 {user} {msg}\n```"
-        elif item.get("type") == MessageType.DEATH:
+        elif type == MessageType.DEATH:
             out_str = f"```💀 {user} {msg}```"
-        elif item.get("type") == MessageType.ACHIEVEMENT:
+        elif type == MessageType.ACHIEVEMENT:
             out_str = f"```🏆 {user} {msg}```"
         else:
-            out_str = ""
-            print("ERROR: out_str fallthrough")
+            print(f"ERROR: out_str fallthrough: {item}")
         return out_str
 
     # Filter Version Handler --------------------------------------------------------------------------
@@ -118,29 +117,29 @@ class MessageFilter:
             if (entry[0] == '<') and ('<' and '>' in entry):
                 msg  = split_first(entry,'> ')[1]
                 user = get_between(entry, '<','>')
-                return self.get_msg_dict(time, user, msg, MessageType.MSG)
+                return self.get_msg_dict(user, msg, MessageType.MSG, discord.Color.green)
 
             # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
             elif entry.find(" joined the game") >= 0: 
                 msg = "joined the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(time, user, msg, MessageType.JOIN)
+                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_gold)
             elif entry.find(" left the game") >= 0:
                 msg = "left the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(time, user, msg, MessageType.LEAVE)
+                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_gold)
 
             # Achievement Detection
             elif entry.find("has made the advancement") >= 0:
                 user = entry.split(' ',1)[0]
-                msg = f" has made the advancement [{split_first(entry,'[')[1]}"
-                return self.get_msg_dict(time, user, msg, MessageType.ACHIEVEMENT)
+                msg = f"has made the advancement [{split_first(entry,'[')[1]}"
+                return self.get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.gold)
 
             # Death Message Detection
             else:
                 dm = Death(entry)
                 if dm.is_death():
-                    return self.get_msg_dict(time, dm.player, dm.stripped_msg, MessageType.DEATH)
+                    return self.get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.dark_red)
 
     def filter_factorio(self, in_str):
         if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
@@ -154,16 +153,16 @@ class MessageFilter:
                 type = MessageType.MSG
                 name = split_first(after_brackets,':')[0].strip()
                 msg = split_first(after_brackets,':')[1]
-                return self.get_msg_dict(time, name, msg, type)
+                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold)
             # Join
             elif in_brackets == "JOIN":
                 type = MessageType.JOIN
                 msg = 'joined the game.'
                 name = after_brackets.strip().split(' ',1)[0] # First Word
-                return self.get_msg_dict(time, name, msg, type)
+                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold)
             # Leave
             elif in_brackets == "LEAVE":
                 type = MessageType.LEAVE
                 msg = 'left the game.'
                 name = after_brackets.strip().split(' ',1)[0]
-                return self.get_msg_dict(time, name, msg, type)
+                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold)
