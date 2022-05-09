@@ -59,7 +59,7 @@ class ChatLink(commands.Cog):
     @commands.Cog.listener("on_message")
     async def on_disc_message(self, message):
         # Check to make sure it isn't a bot message or command
-        if message.author == self.bot.user or message.content.startswith('>'):
+        if message.author.bot or message.content.startswith('>'):
             return
 
         # Check against channel ids

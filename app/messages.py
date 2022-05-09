@@ -117,29 +117,29 @@ class MessageFilter:
             if (entry[0] == '<') and ('<' and '>' in entry):
                 msg  = split_first(entry,'> ')[1]
                 user = get_between(entry, '<','>')
-                return self.get_msg_dict(user, msg, MessageType.MSG, discord.Color.green)
+                return self.get_msg_dict(user, msg, MessageType.MSG, discord.Color.green())
 
             # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
             elif entry.find(" joined the game") >= 0: 
                 msg = "joined the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_gold)
+                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_gold())
             elif entry.find(" left the game") >= 0:
                 msg = "left the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_gold)
+                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_gold())
 
             # Achievement Detection
             elif entry.find("has made the advancement") >= 0:
                 user = entry.split(' ',1)[0]
                 msg = f"has made the advancement [{split_first(entry,'[')[1]}"
-                return self.get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.gold)
+                return self.get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.gold())
 
             # Death Message Detection
             else:
                 dm = Death(entry)
                 if dm.is_death():
-                    return self.get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.dark_red)
+                    return self.get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.dark_red())
 
     def filter_factorio(self, in_str):
         if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
@@ -153,16 +153,16 @@ class MessageFilter:
                 type = MessageType.MSG
                 name = split_first(after_brackets,':')[0].strip()
                 msg = split_first(after_brackets,':')[1]
-                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold)
+                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold())
             # Join
             elif in_brackets == "JOIN":
                 type = MessageType.JOIN
                 msg = 'joined the game.'
                 name = after_brackets.strip().split(' ',1)[0] # First Word
-                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold)
+                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold())
             # Leave
             elif in_brackets == "LEAVE":
                 type = MessageType.LEAVE
                 msg = 'left the game.'
                 name = after_brackets.strip().split(' ',1)[0]
-                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold)
+                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold())
