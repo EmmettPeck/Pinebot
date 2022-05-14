@@ -21,18 +21,34 @@ class ChatLink(commands.Cog):
         # TODO Check if players are online that there isn't a join for, if so, add a join at time of discovery
 
         self.pass_message.start()
+        self.header_update.start()
 
     def cog_unload(self):
         self.pass_message.cancel()
+        self.header_update.cancel()
 
     # Chat-Link
     # ------------------------------------------------------------------
     # Header Updating ------------------------------------------------------------------
-        # Docker Status
-        # Playercount
-            # Version Based (MC List vs Factorio[Generic] version types)
+    @tasks.loop(seconds=10)
+    async def header_update(self):
+        for server in DB.get_containers():
+            #Version Catch (MC List vs Factorio[Generic] version types)
+            if server.get("version") == "mc":
+                ctx = self.bot.get_channel(server.get("channel_id"))
+            else:
+                continue
+
+            status = DB.client.containers.get(server.get("docker_name"))
+            player_list = DockingPort().send(ctx.id, "/list")
+            if player_list:
+                chunks = player_list.split()
+                await ctx.edit(topic=f"{server.get('name')} | {chunks[2]}/{chunks[7]} | Status: {status.status.title()}")
         # MOTD?
-        # Update w/ Taskloop
+
+    @header_update.before_loop
+    async def before_header_update(self):
+        await self.bot.wait_until_ready() 
 
     # Server -> Discord  -----------------------------------------------------------------------
     @tasks.loop(seconds=1)
