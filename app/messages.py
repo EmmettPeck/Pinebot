@@ -117,17 +117,17 @@ class MessageFilter:
             if (entry[0] == '<') and ('<' and '>' in entry):
                 msg  = split_first(entry,'> ')[1]
                 user = get_between(entry, '<','>')
-                return self.get_msg_dict(user, msg, MessageType.MSG, discord.Color.green())
+                return self.get_msg_dict(f'<{user}>', msg, MessageType.MSG, discord.Color.green())
 
             # Join/Leave Detection by searching for "joined the game." and "left the game." -- Find returns -1 if not found
             elif entry.find(" joined the game") >= 0: 
                 msg = "joined the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_gold())
+                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_magenta())
             elif entry.find(" left the game") >= 0:
                 msg = "left the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_gold())
+                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_magenta())
 
             # Achievement Detection
             elif entry.find("has made the advancement") >= 0:
@@ -153,7 +153,7 @@ class MessageFilter:
                 type = MessageType.MSG
                 name = split_first(after_brackets,':')[0].strip()
                 msg = split_first(after_brackets,':')[1]
-                return self.get_msg_dict(name, msg, type, discord.Color.dark_gold())
+                return self.get_msg_dict(f'<{name}>', msg, type, discord.Color.dark_gold())
             # Join
             elif in_brackets == "JOIN":
                 type = MessageType.JOIN

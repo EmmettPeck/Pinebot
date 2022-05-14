@@ -254,6 +254,7 @@ class Analytics(commands.Cog):
         """Returns calculated time for server; Handles listbuilding for joins/leaves"""
         joinList = self.get_join_list_dt(uuid_index, serverIndex, serverName)
         leaveList = self.get_leave_list_dt(uuid_index, serverIndex, serverName)
+        # TODO If joinList len == leavelist len, check if player is online, if so, then well fuck. 
         return self.calculate_playtime(joinList, leaveList, uuid_index, serverName)
     
     def update_playtime(self, uuid_index, serverIndex, serverName, pt):
@@ -276,8 +277,9 @@ class Analytics(commands.Cog):
             DB.save_playerstats()
             return pinetotal
         else: # Catch to check if servername matches valid container, otherwise returns none?
-            playt = self.get_playtime(uuid_index, serverName)
-            self.update_playtime(uuid_index, serverName, playt)
+            server_index = self.get_server_index(serverName)
+            playt = self.get_playtime(uuid_index, self.get_server_index(serverName), serverName)
+            self.update_playtime(uuid_index, server_index, serverName, playt)
 
             DB.save_playerstats()
             return playt

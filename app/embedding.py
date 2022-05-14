@@ -39,8 +39,6 @@ def embed_message(msg_dict):
         type_uni = ""
 
     # Embed Message & Datetime, then add playername as author
-    embeded_message = discord.Embed(title=f"{type_uni} {msg_dict.get('message')}",timestame=msg_dict.get("time"))
-    embeded_message.set_author(msg_dict.get("username"))
-
-    return embeded_message
+    return discord.Embed(title=f"{type_uni} {msg_dict.get('username')} {msg_dict.get('message')}",timestame=msg_dict.get("time"), color = msg_dict.get("color"))
     #ctx.send(embed=<embed obj>)
+    

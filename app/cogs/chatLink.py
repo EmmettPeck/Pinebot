@@ -8,6 +8,7 @@ from discord.ext import tasks, commands
 from messages import MessageFilter
 from database import DB
 from dockingPort import DockingPort
+from embedding import embed_message
 
 class ChatLink(commands.Cog):
 
@@ -17,6 +18,7 @@ class ChatLink(commands.Cog):
         # Fingerprint All Old Messages
         for server in DB.get_containers():
             DockingPort().read(server.get("channel_id"), True)
+        # TODO Check if players are online that there isn't a join for, if so, add a join at time of discovery
 
         self.pass_message.start()
 
@@ -39,16 +41,14 @@ class ChatLink(commands.Cog):
         i = 0 #Server Number
         for server in DB.get_containers():
             id = server.get("channel_id")
-            out_channel = self.bot.get_channel(id)
+            ctx = self.bot.get_channel(id)
             q = DB.get_msg_queue(i)
             DockingPort().read(id)
 
             # Loop through Queue until empty for each server, printing
             while not q.qsize() == 0: 
                 item = q.get()
-                out_str = MessageFilter().format_message(item)
-                if out_str: 
-                    await out_channel.send(out_str)
+                await ctx.send(embed=embed_message(item))
             i+=1
 
     @pass_message.before_loop
