@@ -5,6 +5,7 @@ A cog for discord.py that incorporates
 """
 from discord.ext import tasks, commands
 
+from datetime import datetime
 from messages import MessageFilter
 from database import DB
 from dockingPort import DockingPort
@@ -34,17 +35,19 @@ class ChatLink(commands.Cog):
     async def header_update(self):
         for server in DB.get_containers():
             #Version Catch (MC List vs Factorio[Generic] version types)
-            if server.get("version") == "mc":
-                ctx = self.bot.get_channel(server.get("channel_id"))
-            else:
-                continue
+            if server.get("version") != "mc": continue
 
+            cid = server.get("channel_id")
+            ctx = self.bot.get_channel(cid)    
             status = DB.client.containers.get(server.get("docker_name"))
-            player_list = DockingPort().send(ctx.id, "/list")
+            player_list = DockingPort().send(cid, "/list")
             if player_list:
                 chunks = player_list.split()
-                await ctx.edit(topic=f"{server.get('name')} | {chunks[2]}/{chunks[7]} | Status: {status.status.title()}")
+                if status.status.title().strip() == 'Running': status = "Online"
+                else: status = "Offline"
+                await ctx.edit(topic=f"{server.get('name')} | {chunks[2]}/{chunks[7]} | Status: {status}")
         # MOTD?
+        # Uptime?
 
     @header_update.before_loop
     async def before_header_update(self):

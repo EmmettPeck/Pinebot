@@ -5,40 +5,31 @@ Embedded text blocks for a variety of discord bot purposes
 """
 
 import discord
-from datetime import datetime
 
-from messages import MessageType
+from messages import get_type_icon
 
-# Table
-    #  Name | Description | Address
-    #  Main | Main MC Serv| mc.pineserver.net
-    #  Liam | Liams MC Ser| liam.pineserver.net
+def embed_server_list(input):
+    #table = ["Title", {"name": "server","desc":"description"}]
+    embed = discord.Embed(title = input[0], color = discord.Color.dark_blue())
+    for i in range(len(input)-1):
+        sname = input[i+1].get("name")
+        sdesc = input[i+1].get("desc")
+        sip = input[i+1].get("ip")
 
+        if (sname == None) or (sdesc == None) or (sip == None): continue
+
+        embed.add_field(name=f"{sname.title()}\n ``{sip}``", value=f'{sdesc}\n', inline=False)
+
+    return embed
+def embed_playtime(input):
+    pass
 # Playtime Table
     # Total:
         # Highest Playtime Server:
         # 2nd
         # 3rd
 
-# Message
 def embed_message(msg_dict):
-    type_uni = ""
-
-    # Type Unicode -- Switch 
-    # TODO Do I need to use numbers in enum? Maybe just these chars instead?
-    type = msg_dict.get("type")
-    if (type == MessageType.JOIN) or (type == MessageType.LEAVE):
-        type_uni = "🚪"
-    elif (type == MessageType.MSG):
-        type_uni = "💬"
-    elif (type == MessageType.DEATH):
-        type_uni = "💀"
-    elif (type == MessageType.ACHIEVEMENT):
-        type_uni = "🏆"
-    else:
-        type_uni = ""
-
-    # Embed Message & Datetime, then add playername as author
-    return discord.Embed(title=f"{type_uni} {msg_dict.get('username')} {msg_dict.get('message')}",timestame=msg_dict.get("time"), color = msg_dict.get("color"))
-    #ctx.send(embed=<embed obj>)
+    """Returns a discord embed message object corresponding with a chat-link message"""
+    return discord.Embed(title=f"{get_type_icon(msg_dict.get('type'))} {msg_dict.get('username')} {msg_dict.get('message')}",timestame=msg_dict.get("time"), color = msg_dict.get("color"))
     

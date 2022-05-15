@@ -38,6 +38,20 @@ class MessageType(Enum):
     DEATH = 4
     ACHIEVEMENT = 5
 
+def get_type_icon(type):
+    """Returns corresponding icon to msgtype enumerable"""
+    if (type == MessageType.JOIN) or (type == MessageType.LEAVE):
+        type_uni = "🚪"
+    elif (type == MessageType.MSG):
+        type_uni = "💬"
+    elif (type == MessageType.DEATH):
+        type_uni = "💀"
+    elif (type == MessageType.ACHIEVEMENT):
+        type_uni = "🏆"
+    else:
+        type_uni = ""
+    return type_uni
+
 class Death:
     """Filters death messages using startswith and possible MC death messages"""
 
@@ -123,11 +137,11 @@ class MessageFilter:
             elif entry.find(" joined the game") >= 0: 
                 msg = "joined the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_magenta())
+                return self.get_msg_dict(user, msg, MessageType.JOIN, discord.Color.lighter_gray())
             elif entry.find(" left the game") >= 0:
                 msg = "left the game"
                 user = entry.split(' ',1)[0]
-                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_magenta())
+                return self.get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.lighter_gray())
 
             # Achievement Detection
             elif entry.find("has made the advancement") >= 0:
@@ -139,7 +153,7 @@ class MessageFilter:
             else:
                 dm = Death(entry)
                 if dm.is_death():
-                    return self.get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.dark_red())
+                    return self.get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.red())
 
     def filter_factorio(self, in_str):
         if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
