@@ -4,7 +4,7 @@ from discord.ext.commands import has_permissions, CheckFailure
 
 from database import DB
 from dockingPort import DockingPort
-from embedding import embed_server_list, embed_table
+from embedding import embed_server_list, embed_build
 
 class Utilities(commands.Cog):
 
@@ -53,19 +53,19 @@ class Utilities(commands.Cog):
         
         await ctx.message.delete()
         if response:
-            await ctx.send(response)
+            await ctx.send(embed=embed_build(response))
         else:
-            await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
+            await ctx.send(embed=embed_build("Server not found. Use command only in 'Minecraft' text channels."))
 
     # ServerList --------------------------------------------------------------------------------------------------------------------------------------------------
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", brief="Lists all pineserver.net servers")
     async def server_list(self, ctx):
-        out_dict = ["Server List"]
+        out_dict = []
         for server in DB.get_containers():
             if server.get("hidden") == False:
                 out_dict.append({'name':server.get('name'),'desc':server.get('description'),'ip':server.get('ip')})
 
-        await ctx.send(embed=embed_server_list(out_dict))
+        await ctx.send(embed=embed_server_list("Server List",out_dict))
 
 def setup(bot):
     bot.add_cog(Utilities(bot))

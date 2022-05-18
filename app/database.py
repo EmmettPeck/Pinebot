@@ -14,7 +14,8 @@ class DB:
     def __init__(self):
         self.msg_queue = []
         self.fingerprint = []
-        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.connect4', 'cogs.chatLink', 'cogs.analytics']
+        # TODO Update cogs, load from file
+        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.analytics']
 
         self.load_containers()
         self.load_role_whitelist()

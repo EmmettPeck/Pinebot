@@ -9,6 +9,7 @@ from datetime import datetime
 import discord
 from discord.ext import tasks, commands
 
+# TODO Add more presence options.cycle
 disturbing_songs = ["a podcast ☕","Bot Club (feat. Lil Botty)","Gymnopédie No. 1", "Kill EVERYBODY","Get Into It (Yuh)","Ex Machina (Original Motion Picture Soundtrack)","Have Mercy"]
 cycle_songs = cycle(disturbing_songs)
 
@@ -29,7 +30,7 @@ class Presence(commands.Cog):
     
     @tasks.loop(minutes = 1)
     async def set_presence(self):
-        hour = int(datetime.now().strftime("%H"))
+        hour = int(datetime.utcnow().strftime("%H"))
 
         #print(f"Hour: {hour}")
         if hour >= 22 or hour < 7:

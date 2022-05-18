@@ -1,17 +1,19 @@
 """
-chatLink.py
+factorio.py
 By: Emmett Peck
-A cog for discord.py that incorporates 
+A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
 """
+
+# TODO Filter to only read Factorio servers & channels
+    # Optimize looping? Store list of channels, or is it too few to really matter?
+
 from discord.ext import tasks, commands
 
-from datetime import datetime
-from messages import MessageFilter
 from database import DB
 from dockingPort import DockingPort
 from embedding import embed_message
 
-class ChatLink(commands.Cog):
+class Factorio(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
@@ -93,4 +95,4 @@ class ChatLink(commands.Cog):
                 DockingPort().send(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}',False)
 
 def setup(bot):
-    bot.add_cog(ChatLink(bot))        
+    bot.add_cog(Factorio(bot))

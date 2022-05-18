@@ -77,7 +77,7 @@ class MessageFilter:
 
     def get_msg_dict(self, username, message, MessageType, color):
         """Appends and prints messages to return_list as dictionaries"""
-        local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.now(), 'color': color}
+        local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.utcnow(), 'color': color}
         print (f" --- Time:{local_dict['time']}, User:{username}, Msg:{message}, Type:{MessageType}")
         return local_dict
 
@@ -112,6 +112,7 @@ class MessageFilter:
             return self.filter_factorio(in_str)
     
     # Filters ------------------------------------------------------------------------------------------------
+    # TODO Move filters to respective cogs
     def filter_mc(self, in_str):
         """Filters Deaths, Messages, Leaves/Joins from Minecraft 1.18 server log and returns as a dict"""
 

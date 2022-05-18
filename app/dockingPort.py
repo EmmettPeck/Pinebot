@@ -7,6 +7,7 @@ Handles interraction with docker game servers
 from messages import MessageFilter, MessageType
 from database import DB
 
+#TODO Reconsider whether a class is needed here, or just functions
 class DockingPort:
     """Handles docker interaction on hostsystem"""
 
