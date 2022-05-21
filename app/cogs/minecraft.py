@@ -3,94 +3,135 @@ minecraft.py
 By: Emmett Peck
 A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
 """
+import discord
 from discord.ext import tasks, commands
 
 from database import DB
-from dockingPort import DockingPort
 from embedding import embed_message
+from messages import MessageType, split_first, get_between, Death, get_msg_dict #TODO MOVE DEATH HERE
+from pinebot.app.cogs.gamecog import GameCog
 
-# TODO Filter to only read Minecraft servers & channels
+class Minecraft(GameCog):
 
-class Minecraft(commands.Cog):
+    def send(self, command, logging=False): 
+        """
+        OVERLOAD: 
+        Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
+        """
+        # Attach Container
+        container = DB.client.containers.get(self.docker_name)
 
-    def __init__(self, bot):
-        self.bot = bot
+        # Send Command, and decipher tuple
+        filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
+        resp_bytes = container.exec_run(f"rcon-cli '{filtered_command}'")
+        resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
+        
+        if logging:
+            print(f"\nSent MC command /{command} to {self.server_name}.{__name__}:")
+            print(f' --- {resp_str}')
+        return resp_str
 
-        # Fingerprint All Old Messages
-        for server in DB.get_containers():
-            DockingPort().read(server.get("channel_id"), True)
-        # TODO Check if players are online that there isn't a join for, if so, add a join at time of discovery
+    def send_message(self, formatted_msg):
+        '''
+        OVERLOAD: MC
+        Sends discord blue message to MC chat
+        '''
+        self.send(f'tellraw @a {{"text":"{formatted_msg}","color":"#7289da"}}')
+        return
 
-        self.pass_message.start()
-        self.header_update.start()
+    def get_player_list(self) -> list:
+        """ OVERLOAD: MC
+        get_player_list(self) -> ["Playername", "Playername"...]
+        For versions without a getlist function, returns None
 
-    def cog_unload(self):
-        self.pass_message.cancel()
-        self.header_update.cancel()
+        """
+        player_list = []
+        response = self.send("/list")
+        if not response: return None
+        player_max = response.split("max of").split(maxsplit= 1)
+        stripped = response.split("online:")
+        try:
+            for player in stripped[1].split(','):
+                player_list.append(player.strip())
+        except IndexError:
+            return None
+        else:
+            if player_list == ['']: return None
 
-    # Chat-Link
-    # ------------------------------------------------------------------
-    # Header Updating ------------------------------------------------------------------
-    @tasks.loop(seconds=10)
-    async def header_update(self):
-        for server in DB.get_containers():
-            #Version Catch (MC List vs Factorio[Generic] version types)
-            if server.get("version") != "mc": continue
+            self.online_players = player_list
+            self.player_max = player_max
 
-            cid = server.get("channel_id")
-            ctx = self.bot.get_channel(cid)    
-            status = DB.client.containers.get(server.get("docker_name"))
-            player_list = DockingPort().send(cid, "/list")
-            if player_list:
-                chunks = player_list.split()
-                if status.status.title().strip() == 'Running': status = "Online"
-                else: status = "Offline"
-                await ctx.edit(topic=f"{server.get('name')} | {chunks[2]}/{chunks[7]} | Status: {status}")
-        # MOTD?
-        # Uptime?
+    # Chat Filtering -----------------------------------------------------------------------------------------------------------------------------------
+    
+    # Deaths--------------------------------------------------------------------------------------------------------------------------------------------
+    class Death: #TODO TODO REFACTOR
+        """Filters death messages using startswith and possible MC death messages"""
 
-    @header_update.before_loop
-    async def before_header_update(self):
-        await self.bot.wait_until_ready() 
+        def __init__(self, msg):
+            self.msg = msg.strip()
+            self.player = self.msg.split()[0]
+            self.stripped_msg = self.msg.split(self.player)[1].strip()
+            self.death_msg_startw = ["was shot by","was pummeled by","was pricked to death","walked into a cactus whilst trying to escape","drowned","drowned whilst trying to escape","experienced kinetic energy","experienced kinetic energy whilst trying to escape","blew up","was blown up by","was killed by","hit the ground too hard","fell from a high place","fell off a ladder","fell off some vines","fell off some weeping vines","fell off some twisting vines","fell off scaffolding","fell while climbing","was impaled on a stalagmite","was squashed by a falling anvil","was squashed by a falling block","was skewered by a falling stalactite","went up in flames","burned to death","was burnt to a crisp whilst fighting","went off with a bang","tried to swim in lava","was struck by lightning","discovered the floor was lava","walked into danger zone due to","was killed by magic","was killed by","froze to death","was frozen to death by","was slain by","was fireballed by","was stung to death","was shot by a skull from","starved to death","suffocated in a wall","was squished too much","was squashed by","was poked to death by a sweet berry bush","was killed trying to hurt","was impaled by","fell out of the world","didn't want to live in the same world as","withered away","died from dehydration","died","was roasted in dragon breath","was doomed to fall","fell too far and was finished by","was stung to death by","went off with a bang","was killed by even more magic","was too soft for this world"]
 
-    # Server -> Discord  -----------------------------------------------------------------------
-    @tasks.loop(seconds=1)
-    async def pass_message(self):
-        # For each server, set outchannel, get items from queue
-        i = 0 #Server Number
-        for server in DB.get_containers():
-            id = server.get("channel_id")
-            ctx = self.bot.get_channel(id)
-            q = DB.get_msg_queue(i)
-            DockingPort().read(id)
+        def is_death(self):
+            """Checks if playerless string matches death message"""
+            for item in self.death_msg_startw:
+                #print(f"E--- {self.stripped_msg} vs {item}:")
+                if self.stripped_msg.startswith(item):
+                    return True
+            return False
+    # Filter--------------------------------------------------------------------------------------------------------------------------------------------
+    def filter(self, message:str, ignore):
+        """ 
+        OVERLOAD: Minecraft 1.18.2 Filter
+        Filters logs by to gameversion, adding leaves/joins to connectqueue and messages to message queue
+        """
+        # Fingerprint Filtering
+        if self.fingerprint.is_unique_fingerprint(message):
 
-            # Loop through Queue until empty for each server, printing
-            while not q.qsize() == 0: 
-                item = q.get()
-                await ctx.send(embed=embed_message(item))
-            i+=1
+            # Ensure '[Server thread/INFO]:' ----------------------------------------------------------------------
+            info_split = message.split('] [Server thread/INFO]',1)
+            if len(info_split) != 2:
+                return
 
-    @pass_message.before_loop
-    async def before_pass_mc_message(self):
-        await self.bot.wait_until_ready() 
+            # Separate time; break apart entry from info ----------------------------------------------------------
+            entry = split_first(info_split[1],':')[1].strip()
+            time = split_first(info_split[0], '[')[1]
 
-    # Discord -> Server -----------------------------------------------------------------------
-    @commands.Cog.listener("on_message")
-    async def on_disc_message(self, message):
-        # Check to make sure it isn't a bot message or command
-        if message.author.bot or message.content.startswith('>'):
-            return
+            # Message Detection using <{user}> {msg} --------------------------------------------------------------
+            if (entry[0] == '<') and ('<' and '>' in entry):
+                msg  = split_first(entry,'> ')[1]
+                user = get_between(entry, '<','>')
+                post = get_msg_dict(f'<{user}>', msg, MessageType.MSG, discord.Color.green())
 
-        # Check against channel ids
-        for channel in DB.get_containers():
-            cid = channel.get("channel_id")
-            if message.channel.id == cid:
-                # Catch non-mc messages
-                if channel.get("version") != "mc": return
-                # Send message to mc server! Use colored messages?
-                item = f"<{message.author.name}> {message.content}"
-                print(f" -Discord-: {item}")
-                DockingPort().send(cid, f'tellraw @a {{"text":"{item}","color":"#7289da"}}',False)
+            # Join/Leave Detection by searching for "joined the game." and "left the game."------------------------
+            elif entry.find(" joined the game") >= 0: 
+                msg = "joined the game"
+                user = entry.split(' ',1)[0]
+                post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.lighter_gray())
+            elif entry.find(" left the game") >= 0:
+                msg = "left the game"
+                user = entry.split(' ',1)[0]
+                post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.lighter_gray())
+
+            # Achievement Detection ------------------------------------------------------------------------------
+            elif entry.find("has made the advancement") >= 0:
+                user = entry.split(' ',1)[0]
+                msg = f"has made the advancement [{split_first(entry,'[')[1]}"
+                post = get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.gold())
+
+            # Death Message Detection -----------------------------------------------------------------------------
+            else:
+                dm = Death(entry)
+                if dm.is_death():
+                    post = get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.red())
+
+        # If Not Ignore, Messages are sent and accounted for playtime
+        if post and (not ignore):
+            if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
+                post["server"] = self.server_name
+                self.message_queue.put(post)
+            self.message_queue.put(post)
 
 def setup(bot):
     bot.add_cog(Minecraft(bot))      

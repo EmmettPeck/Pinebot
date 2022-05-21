@@ -25,29 +25,6 @@ class Analytics(commands.Cog):
         self.connect_event_handler.cancel()
     
 # ---------------------------------------------------------------------------------------------------
-# Connect Event Queue -------------------------------------------------------------------------------
-# TODO Move to callable function in analytics_lib
-    @tasks.loop(seconds=1)
-    async def connect_event_handler(self):
-        q = DB.get_connect_queue()
-
-        # Quick Return
-        if q.qsize() == 0: return
-
-        # Calculate
-        f = False
-        while not q.qsize() == 0:
-            f = True
-            x = q.get()
-            if x['type'] == MessageType.JOIN:
-                is_online = True
-            else:
-                is_online = False
-            analytics_lib.add_connect_event(x['username'], x['server'], is_online, x['time'])
-        if f: DB.save_playerstats()
-    @connect_event_handler.before_loop
-    async def before_connect_event_handler(self):
-        await self.bot.wait_until_ready() 
         
 # Commands ------------------------------------------------------------------------------------------
     @commands.command(name='playtime',help='Returns playtime on pineservers. >playtime <player-name> <server-name>, otherwise returns total of player.',brief='Get total playtime.')

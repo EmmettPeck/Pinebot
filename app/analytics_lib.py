@@ -157,50 +157,6 @@ def add_player( username):
     print(f"ADDED: added player {username}")
     DB.save_playerstats()
 
-def get_player_list(self, serverName): #TODO Issue #45
-    """"Returns a list of players currently online"""
-    response = None
-    player_list = []
-
-    # Match servername to channel ID, then get list 
-    for server in DB.get_containers():
-        if serverName == server['name']:
-            if server['version'] == 'mc':
-                response = dockingPort.DockingPort().send(server['channel_id'], "/list")
-                break
-    
-    if not response:
-        return None
-
-    stripped = response.split("online:")
-    try:
-        for player in stripped[1].split(','):
-            player_list.append(player.strip())
-        # Catch 3
-        if player_list == ['']:
-            return None
-    except IndexError:
-        return None
-    else:
-        return player_list
-    
-def is_player_online(uuid_index, serverName):
-    """Returns true if player is on server"""
-    player_list = get_player_list(serverName)
-
-    if not player_list:
-        return None
-    
-    try:
-        for player in player_list:
-            if get_player_uuid(player) == DB.playerstats[uuid_index]["UUID"]:
-                return True
-    except:
-        print("ERROR: is_player_online() ERROR")
-        pass
-    else:
-        return False
-
 # Calculate Playtime ------------------------------------------------------------------------------------------
 def calculate_playtime(joinList, leaveList, uuid_index, serverName):
     """Computes betweentime for leave & join dt lists"""

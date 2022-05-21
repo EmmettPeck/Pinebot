@@ -6,15 +6,15 @@ Log and filter out past 100 non-unique fingerprints per class
 
 import json
 import hashlib
+from database import DB
 
 class FingerPrints:
 
-    def __init__(self, in_str):
-        self.name = in_str
+    def __init__(self, docker_name):
+        self.name = docker_name
         self.fingerprintDB = self.load_fingerprintDB()
     
     def load_fingerprintDB(self):
-        """Loads the previous 100 message hashes"""
         try:
             with open(rf"data/hash_{self.name}.json", 'r') as read_file:
                 return json.load(read_file)
@@ -24,7 +24,6 @@ class FingerPrints:
             return self.load_fingerprintDB()
     
     def save_fingerprintDB(self):
-        """Saves the previous 100 message hashes"""
         with open(rf"data/hash_{self.name}.json", 'w') as write_file:
             json.dump(self.fingerprintDB, write_file, indent = 2)
     
@@ -39,6 +38,7 @@ class FingerPrints:
     def is_unique_fingerprint(self, string, database_list=None):
         """Compares hash to provided database_list"""
         fingerprint = self.get_hash_int(string)
+        length = DB.get_tail_len()
 
         # Catch to set to own fingerprintdb
         if database_list == None:
@@ -51,9 +51,9 @@ class FingerPrints:
         except ValueError as v:
             # Insert new elements to list 
             database_list.insert(0, fingerprint)
-            # Pop elements over pos 100 to keep the list small
-            if len(database_list) > 100: 
-                database_list.pop(100)
+            # Pop elements over length to keep the list small
+            if len(database_list) > length: 
+                database_list.pop(length)
             self.save_fingerprintDB()
             return True
         else:

@@ -3,8 +3,6 @@ import queue
 
 import docker
 
-from fingerprints import FingerPrints
-
 def singleton(cls):
     return cls()
 
@@ -13,21 +11,29 @@ class DB:
     """A database of all Pinebot information, passed by reference to all methods"""
     def __init__(self):
         self.msg_queue = []
-        self.fingerprint = []
         # TODO Update cogs, load from file
         self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.analytics']
 
         self.load_containers()
         self.load_role_whitelist()
-        self.build_msg_queues()
-        self.build_fingerprints()
 
         self.client = docker.from_env()
-        # Analytics
-        self.connect_queue = queue.Queue()
+
+        # Timing ------------------------------------------------
+        self.chat_link_time = 1
+        self.tail_len = 10
+        # Analytics ---------------------------------------------
+        self.connect_queue = queue.Queue() #TODO Move connect queue to callable analytics_lib function for gamecogs
         self.playerstats = self.load_playerstats()
         if not self.playerstats:
             self.create_playerstats()
+
+    # Timing -------------------------------------------------------------------
+    def get_chat_link_time(self):
+        return self.chat_link_time
+
+    def get_tail_len(self):
+        return self.tail_len
 
     # Role Whitelist -----------------------------------------------------------
     def get_role_whitelist(self):
@@ -61,34 +67,11 @@ class DB:
         self.containers.pop(popID)
         self.save_containers()
 
-    # Msg Queues -------------------------------------------------------
-    def add_msg_queue(self):
-        self.msg_queue.append(queue.Queue())
-
-    def build_msg_queues(self):
-        for i in range(len(self.get_containers())):
-            self.msg_queue.append(queue.Queue())
-
-    def get_msg_queue(self, index):
-        return self.msg_queue[index]
-
-    # Fingerprints ------------------------------------------------------
-    def build_fingerprints(self):
-        containers = self.get_containers()
-        for i in range(len(self.get_containers())):
-            self.fingerprint.append(FingerPrints(containers[i]['docker_name']))
-
+    # Cogs -------------------------------------------------------------------
     def get_cogs(self):
         return self.cogs
+    
     # Playerstats -----------------------------------------------------------
-    def add_connect_event(self, msg, server):
-        x = msg
-        x['server'] = server
-        self.connect_queue.put(x)
-
-    def get_connect_queue(self):
-        return self.connect_queue
-
     def load_playerstats(self):
         """Load playerstats from playerstats.json"""
         try:
