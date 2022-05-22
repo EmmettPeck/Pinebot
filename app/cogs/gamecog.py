@@ -34,15 +34,22 @@ class GameCog(commands.Cog):
         # Start Loop Functions
         self.pass_message.start()
 
-    # Unload ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+    # Cog Functions ----------------------------------------------------------------------------------------------------------------------------------------------------------------
     def cog_unload(self):
         self.pass_message.cancel()
 
-
-    def get_version(self):
+    def get_version(self) -> str:
         """
         The Version Of The GameCog To Be Overloaded
         """
+        return None
+
+    def find_server(self, cid:int) -> Server:
+        """
+        Returns the server object with a matching cid, otherwise returns None
+        """
+        for server in self.servers:
+            if server.cid == cid: return server
         return None
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # GameCog Functions
@@ -93,7 +100,7 @@ class GameCog(commands.Cog):
     # Analytics -------------------------------------------------------------------------------------------------------------------------------------------------------------
     def is_player_online(self, server, uuid_index:int = None, playername:str = None) -> bool:
         """
-            If uuid_index or playername in online_players: Returns True, else False
+        If uuid_index or playername in online_players: Returns True, else False
         """
         if uuid_index:
             for player in server.online_players:
@@ -148,7 +155,6 @@ class GameCog(commands.Cog):
                 await server.ctx.send(embed=embed_message(server.message_queue.get()))
             # Connect Queue
             self.handle_connect_queue(server=server)
-
     @pass_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 
@@ -162,7 +168,7 @@ class GameCog(commands.Cog):
             if message.channel.id == server.cid:
                 self.send_message(self, server=server, formatted_msg = self.discord_message_format(server=server,message=message))
 
-    def send_message(self, server, formatted_msg):
+    def send_message(self, server:Server, formatted_msg):
         """
         Sends Message To Server Based On Version Implementation:
          - If no consolebased say command, does nothing.

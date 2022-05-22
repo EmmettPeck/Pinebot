@@ -57,29 +57,3 @@ def get_msg_dict(username, message, MessageType, color):
         local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.utcnow(), 'color': color}
         print (f" --- Time:{local_dict['time']}, User:{username}, Msg:{message}, Type:{MessageType}")
         return local_dict   
-
-def filter_factorio(self, in_str):
-    if DB.fingerprint[self.i].is_unique_fingerprint(in_str):
-
-        time = split_first(in_str,'[')[0].strip()
-        in_brackets = split_first(split_first(in_str,'[')[1],']')[0]
-        after_brackets = split_first(in_str,']')[1]
-        
-        # Message
-        if in_brackets == "CHAT":
-            type = MessageType.MSG
-            name = split_first(after_brackets,':')[0].strip()
-            msg = split_first(after_brackets,':')[1]
-            return self.get_msg_dict(f'<{name}>', msg, type, discord.Color.dark_gold())
-        # Join
-        elif in_brackets == "JOIN":
-            type = MessageType.JOIN
-            msg = 'joined the game.'
-            name = after_brackets.strip().split(' ',1)[0] # First Word
-            return self.get_msg_dict(name, msg, type, discord.Color.dark_gold())
-        # Leave
-        elif in_brackets == "LEAVE":
-            type = MessageType.LEAVE
-            msg = 'left the game.'
-            name = after_brackets.strip().split(' ',1)[0]
-            return self.get_msg_dict(name, msg, type, discord.Color.dark_gold())

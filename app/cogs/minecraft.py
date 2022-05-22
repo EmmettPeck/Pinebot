@@ -4,20 +4,75 @@ By: Emmett Peck
 A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
 """
 import discord
+from discord.ext import commands
+from discord.ext.commands import has_permissions, CheckFailure
 from database import DB
 from messages import MessageType, get_between, get_msg_dict, split_first
 from server import Server
+from embedding import embed_build
 
 from cogs.gamecog import GameCog
 
 
 class Minecraft(GameCog):
 
-    def send(self, server:Server, command, logging=False): 
+# COMMANDS ----------------------------------------------------------------------------------
+    # Whitelist -----------------------------------------------------------------------------------------------------------------------------------------------
+    @commands.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {DB.get_role_whitelist()} role.", brief="Whitelist a player.")
+    @commands.has_any_role(*DB.get_role_whitelist())
+    async def whitelist(self, ctx, *, mess):
+        ''' Whitelists <args> to corresponding server as is defined in DChannels if user has applicable role'''
+        # TODO server ARG
+        response = self.send(server=self.find_server(ctx.channel.id), command=f"whitelist add {mess}",logging=True)
+        if response:
+            await ctx.send(response)
+        else:
+            await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
+    @whitelist.error
+    async def whitelist_error(self, error, ctx):
+        if isinstance(error, CheckFailure):
+            await self.bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
+
+    # Send --------------------------------------------------------------------------------------------------------------------------------------------------
+    @commands.command(name='send', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
+    @has_permissions(administrator=True)
+    async def send(self, ctx, *, mess):
+        ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
+        response = self.send(server=self.find_server(ctx.channel.id), command=mess, logging=True)
+        if response:
+            await ctx.send(response)
+        else:
+            await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
+    @send.error
+    async def send_error(self, error, ctx):
+        if isinstance(error, CheckFailure):
+            await self.bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
+
+    # List -------------------------------------------------------------------------------------------------------------------------------------------------------
+    @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
+    async def list(self, ctx):
+        response = self.send(server=self.find_server(ctx.channel.id), command="/list")
+        
+        await ctx.message.delete()
+        if response:
+            await ctx.send(embed=embed_build(response))
+        else:
+            await ctx.send(embed=embed_build("Server not found. Use command only in 'Minecraft' text channels."))
+
+# OVERLOADS ----------------------------------------------------------------------------------
+
+    def get_version(self):
+        return "Minecraft"
+
+    def send(self, server:Server, command, logging=False) -> str: 
         """
         OVERLOAD: 
         Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
         """
+        if server == None: 
+            print(f"{server.server_name}.{__name__}: send server None") 
+            return
+            
         # Attach Container
         container = DB.client.containers.get(server.docker_name)
 
@@ -37,7 +92,6 @@ class Minecraft(GameCog):
         Sends discord blue message to MC chat
         '''
         self.send(server=server,command=f'tellraw @a {{"text":"{formatted_msg}","color":"#7289da"}}')
-        return
 
     def get_player_list(self, server:Server) -> list:
         """ OVERLOAD: MC
