@@ -4,22 +4,22 @@ By: Emmett Peck
 A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
 """
 import discord
-from discord.ext import tasks, commands
-
 from database import DB
-from embedding import embed_message
-from messages import MessageType, split_first, get_between, Death, get_msg_dict #TODO MOVE DEATH HERE
-from pinebot.app.cogs.gamecog import GameCog
+from messages import MessageType, get_between, get_msg_dict, split_first
+from server import Server
+
+from cogs.gamecog import GameCog
+
 
 class Minecraft(GameCog):
 
-    def send(self, command, logging=False): 
+    def send(self, server:Server, command, logging=False): 
         """
         OVERLOAD: 
         Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
         """
         # Attach Container
-        container = DB.client.containers.get(self.docker_name)
+        container = DB.client.containers.get(server.docker_name)
 
         # Send Command, and decipher tuple
         filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
@@ -27,26 +27,26 @@ class Minecraft(GameCog):
         resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
         
         if logging:
-            print(f"\nSent MC command /{command} to {self.server_name}.{__name__}:")
+            print(f"\nSent MC command /{command} to {server.server_name}.{__name__}:")
             print(f' --- {resp_str}')
         return resp_str
 
-    def send_message(self, formatted_msg):
+    def send_message(self, server:Server, formatted_msg:str):
         '''
         OVERLOAD: MC
         Sends discord blue message to MC chat
         '''
-        self.send(f'tellraw @a {{"text":"{formatted_msg}","color":"#7289da"}}')
+        self.send(server=server,command=f'tellraw @a {{"text":"{formatted_msg}","color":"#7289da"}}')
         return
 
-    def get_player_list(self) -> list:
+    def get_player_list(self, server:Server) -> list:
         """ OVERLOAD: MC
         get_player_list(self) -> ["Playername", "Playername"...]
         For versions without a getlist function, returns None
 
         """
         player_list = []
-        response = self.send("/list")
+        response = self.send(server=server,command="/list")
         if not response: return None
         player_max = response.split("max of").split(maxsplit= 1)
         stripped = response.split("online:")
@@ -58,36 +58,17 @@ class Minecraft(GameCog):
         else:
             if player_list == ['']: return None
 
-            self.online_players = player_list
-            self.player_max = player_max
+            server.online_players = player_list
+            server.player_max = player_max
 
-    # Chat Filtering -----------------------------------------------------------------------------------------------------------------------------------
-    
-    # Deaths--------------------------------------------------------------------------------------------------------------------------------------------
-    class Death: #TODO TODO REFACTOR
-        """Filters death messages using startswith and possible MC death messages"""
-
-        def __init__(self, msg):
-            self.msg = msg.strip()
-            self.player = self.msg.split()[0]
-            self.stripped_msg = self.msg.split(self.player)[1].strip()
-            self.death_msg_startw = ["was shot by","was pummeled by","was pricked to death","walked into a cactus whilst trying to escape","drowned","drowned whilst trying to escape","experienced kinetic energy","experienced kinetic energy whilst trying to escape","blew up","was blown up by","was killed by","hit the ground too hard","fell from a high place","fell off a ladder","fell off some vines","fell off some weeping vines","fell off some twisting vines","fell off scaffolding","fell while climbing","was impaled on a stalagmite","was squashed by a falling anvil","was squashed by a falling block","was skewered by a falling stalactite","went up in flames","burned to death","was burnt to a crisp whilst fighting","went off with a bang","tried to swim in lava","was struck by lightning","discovered the floor was lava","walked into danger zone due to","was killed by magic","was killed by","froze to death","was frozen to death by","was slain by","was fireballed by","was stung to death","was shot by a skull from","starved to death","suffocated in a wall","was squished too much","was squashed by","was poked to death by a sweet berry bush","was killed trying to hurt","was impaled by","fell out of the world","didn't want to live in the same world as","withered away","died from dehydration","died","was roasted in dragon breath","was doomed to fall","fell too far and was finished by","was stung to death by","went off with a bang","was killed by even more magic","was too soft for this world"]
-
-        def is_death(self):
-            """Checks if playerless string matches death message"""
-            for item in self.death_msg_startw:
-                #print(f"E--- {self.stripped_msg} vs {item}:")
-                if self.stripped_msg.startswith(item):
-                    return True
-            return False
     # Filter--------------------------------------------------------------------------------------------------------------------------------------------
-    def filter(self, message:str, ignore):
+    def filter(self, server:Server, message:str, ignore=False):
         """ 
         OVERLOAD: Minecraft 1.18.2 Filter
         Filters logs by to gameversion, adding leaves/joins to connectqueue and messages to message queue
         """
         # Fingerprint Filtering
-        if self.fingerprint.is_unique_fingerprint(message):
+        if server.fingerprint.is_unique_fingerprint(message):
 
             # Ensure '[Server thread/INFO]:' ----------------------------------------------------------------------
             info_split = message.split('] [Server thread/INFO]',1)
@@ -129,9 +110,28 @@ class Minecraft(GameCog):
         # If Not Ignore, Messages are sent and accounted for playtime
         if post and (not ignore):
             if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                post["server"] = self.server_name
-                self.message_queue.put(post)
-            self.message_queue.put(post)
+                post["server"] = server.server_name
+                server.message_queue.put(post)
+            server.message_queue.put(post)
+
+# Deaths--------------------------------------------------------------------------------------------------------------------------------------------
+class Death:
+    """Filters death messages using startswith and possible MC death messages"""
+
+    def __init__(self, msg):
+        self.msg = msg.strip()
+        self.player = self.msg.split()[0]
+        self.stripped_msg = self.msg.split(self.player)[1].strip()
+        self.death_msg_startw = ["was shot by","was pummeled by","was pricked to death","walked into a cactus whilst trying to escape","drowned","drowned whilst trying to escape","experienced kinetic energy","experienced kinetic energy whilst trying to escape","blew up","was blown up by","was killed by","hit the ground too hard","fell from a high place","fell off a ladder","fell off some vines","fell off some weeping vines","fell off some twisting vines","fell off scaffolding","fell while climbing","was impaled on a stalagmite","was squashed by a falling anvil","was squashed by a falling block","was skewered by a falling stalactite","went up in flames","burned to death","was burnt to a crisp whilst fighting","went off with a bang","tried to swim in lava","was struck by lightning","discovered the floor was lava","walked into danger zone due to","was killed by magic","was killed by","froze to death","was frozen to death by","was slain by","was fireballed by","was stung to death","was shot by a skull from","starved to death","suffocated in a wall","was squished too much","was squashed by","was poked to death by a sweet berry bush","was killed trying to hurt","was impaled by","fell out of the world","didn't want to live in the same world as","withered away","died from dehydration","died","was roasted in dragon breath","was doomed to fall","fell too far and was finished by","was stung to death by","went off with a bang","was killed by even more magic","was too soft for this world"]
+
+    def is_death(self):
+        """Checks if playerless string matches death message"""
+        for item in self.death_msg_startw:
+            if self.stripped_msg.startswith(item):
+                return True
+        return False
+
+# ------------------------------------------------------------------------------------------------------------------------------------------------
 
 def setup(bot):
     bot.add_cog(Minecraft(bot))      
