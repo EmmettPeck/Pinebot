@@ -10,20 +10,16 @@ def singleton(cls):
 class DB:
     """A database of all Pinebot information, passed by reference to all methods"""
     def __init__(self):
-        self.msg_queue = []
-        # TODO Update cogs, load from file
-        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.analytics']
-
+        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.analytics', 'cogs.minecraft','cogs.factorio']
         self.load_containers()
         self.load_role_whitelist()
-
         self.client = docker.from_env()
 
         # Timing ------------------------------------------------
         self.chat_link_time = 1
         self.tail_len = 10
+
         # Analytics ---------------------------------------------
-        self.connect_queue = queue.Queue() #TODO Move connect queue to callable analytics_lib function for gamecogs
         self.playerstats = self.load_playerstats()
         if not self.playerstats:
             self.create_playerstats()
@@ -59,7 +55,6 @@ class DB:
             json.dump(self.containers, write_file, indent = 2)
 
     def add_container(self, sDict):
-        self.add_msg_queue()
         self.containers.append(sDict)
         self.save_containers()
 
@@ -94,7 +89,7 @@ class DB:
             add_server(server['name'])
         self.save_playerstats()
 
-# Server Add/Remove ------------------------------------------------------------------------------------------------------------------------------------------------
+# Server Management ------------------------------------------------------------------------------------------------------------------------------------------------
 def add_server(servername):
     """Adds empty server stats to all players"""
     server_list = []

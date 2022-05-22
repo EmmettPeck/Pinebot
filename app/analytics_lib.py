@@ -5,13 +5,10 @@ By: Emmett Peck
 A group of indexing, handling datetime & connection logging, playtime calculating functions.
 """
 from datetime import datetime, timedelta
-
-import dockingPort
 from database import DB
 from username_to_uuid import UsernameToUUID
 
 # Indexing --------------------------------------------------------------------------------------------------------
-
 def get_player_uuid(username):
         """Get player UUID from username"""
         converter = UsernameToUUID(username)
@@ -36,7 +33,6 @@ def get_server_index(serverName):
     return None
 
 # DateTime Stuff ------------------------------------------------------------------------------------------------
-
 def str_to_dt(dt_str):
     """Converts string to datetime format"""
     return datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')    
@@ -61,7 +57,7 @@ def td_format(td_object):
 
     return ", ".join(strings)
 
-def get_connect_dt_list(uuid_index, server_index, serverName):
+def get_connect_dt_list(uuid_index, server_index, serverName) -> tuple:
     """Returns tuple(joinList, leaveList) for corresponding server"""
     joinList = leaveList = []
 
@@ -123,7 +119,6 @@ def add_connect_event(username, serverName, is_join, Time):
         print(f'UnboundLocalError: "{serverName}" not a valid server.')
 
 # Player ------------------------------------------------------------------------------------------------------------------------------------------------
-        
 def add_player( username):
     """Adds player to json, copying servers from empty"""
     uuid = get_player_uuid(username)
@@ -157,7 +152,7 @@ def add_player( username):
     print(f"ADDED: added player {username}")
     DB.save_playerstats()
 
-# Calculate Playtime ------------------------------------------------------------------------------------------
+# Playtime ------------------------------------------------------------------------------------------
 def calculate_playtime(joinList, leaveList, uuid_index, serverName):
     """Computes betweentime for leave & join dt lists"""
     total = timedelta()
