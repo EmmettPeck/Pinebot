@@ -10,7 +10,8 @@ def singleton(cls):
 class DB:
     """A database of all Pinebot information, passed by reference to all methods"""
     def __init__(self):
-        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.analytics', 'cogs.minecraft','cogs.factorio']
+        self.game_cogs = ['cogs.minecraft','cogs.factorio']
+        self.cogs = ['cogs.utils', 'cogs.social', 'cogs.owner','cogs.presence', 'cogs.purge', 'cogs.analytics']
         self.load_containers()
         self.load_role_whitelist()
         self.client = docker.from_env()
@@ -18,11 +19,6 @@ class DB:
         # Timing ------------------------------------------------
         self.chat_link_time = 1
         self.tail_len = 10
-
-        # Analytics ---------------------------------------------
-        self.playerstats = self.load_playerstats()
-        if not self.playerstats:
-            self.create_playerstats()
 
     # Timing -------------------------------------------------------------------
     def get_chat_link_time(self):
@@ -64,30 +60,10 @@ class DB:
 
     # Cogs -------------------------------------------------------------------
     def get_cogs(self):
-        return self.cogs
-    
-    # Playerstats -----------------------------------------------------------
-    def load_playerstats(self):
-        """Load playerstats from playerstats.json"""
-        try:
-            with open("../data/playerstats.json") as f:
-                e = json.load(f)
-        except FileNotFoundError:
-            return None
-        else:
-            return e
+        return self.cogs + self.game_cogs
 
-    def save_playerstats(self):
-        """Saves playerstats to playerstats.json"""
-        with open("../data/playerstats.json", 'w') as f:
-            json.dump(self.playerstats, f, indent = 2)
-    
-    def create_playerstats(self):
-        """Creates empty playerstats.json structure""" 
-        self.playerstats = [{'UUID':'','Servers':[]}]
-        for server in self.containers:
-            add_server(server['name'])
-        self.save_playerstats()
+    def get_game_cogs(self):
+        return self.game_cogs
 
 # Server Management ------------------------------------------------------------------------------------------------------------------------------------------------
 def add_server(servername):

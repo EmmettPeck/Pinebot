@@ -2,35 +2,12 @@
 analytics_lib.py
 
 By: Emmett Peck
-A group of indexing, handling datetime & connection logging, playtime calculating functions.
+A group of handling datetime & connection logging, playtime calculating functions.
 """
 from datetime import datetime, timedelta
+from http import server
 from database import DB
-from username_to_uuid import UsernameToUUID
-
-# Indexing --------------------------------------------------------------------------------------------------------
-def get_player_uuid(username):
-        """Get player UUID from username"""
-        converter = UsernameToUUID(username)
-        uuid = converter.get_uuid()
-        return uuid
-    
-def get_uuid_index(uuid):
-    """Returns index of specific UUID in playerstats"""
-    for D in DB.playerstats: #Looks at each dict
-            if uuid == D["UUID"]:  #If dict UUID value matches UUID
-                return DB.playerstats.index(D) #Sets index to index of dict
-    return None
-
-def get_server_index(serverName):
-    """Returns index of specific serverName in playerstats"""
-    uuid_index = get_uuid_index("")
-
-    # Analytics names MUST match case sensitive Container Names (titletext)
-    for D in DB.playerstats[uuid_index]["Servers"]:
-        if serverName in D.keys():
-            return DB.playerstats[uuid_index]["Servers"].index(D)
-    return None
+from server import Server
 
 # DateTime Stuff ------------------------------------------------------------------------------------------------
 def str_to_dt(dt_str):
@@ -57,22 +34,24 @@ def td_format(td_object):
 
     return ", ".join(strings)
 
-def get_connect_dt_list(uuid_index, server_index, serverName) -> tuple:
-    """Returns tuple(joinList, leaveList) for corresponding server"""
+def get_connect_dt_list(statistics:dict) -> tuple:
+    """Returns tuple(joinList, leaveList) for statistics entry"""
     joinList = leaveList = []
 
-    for join in DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"]:
+    for join in statistics["joins"]:
         joinList.append(str_to_dt(join))
-    for leave in DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"]:
+    for leave in statistics["leaves"]:
         leaveList.append(str_to_dt(leave))
     
     return joinList, leaveList
 
 # Connect Event -----------------------------------------------------------------------------------------------------------------------------------------------
-def is_recentest_join(uuid_index, serverIndex, serverName):
-    "Returns true if Join is most recent connect event"
-    joinList, leaveList = get_connect_dt_list(uuid_index, serverIndex, serverName)
-    
+def is_recentest_join(statistics:dict) -> bool:
+    """
+    Returns true if Join is most recent connect event
+    """
+    joinList, leaveList = get_connect_dt_list(statistics=statistics)
+
     try:
         if(len(leaveList) > 0):
             if(joinList[-1] > leaveList[-1]):
@@ -83,125 +62,65 @@ def is_recentest_join(uuid_index, serverIndex, serverName):
             return True
     except IndexError:
         if(len(joinList) > 0):
-            print(f"Fatal IndexError is_recentest_join: Server:{serverName}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
+            print(f"EEE: Fatal IndexError is_recentest_join: Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
         return None
 
-def add_connect_event(username, serverName, is_join, Time):
-    '''Adds Join/Leave event to UUID by ServerName'''
-    try:
-        uuid = get_player_uuid(username)
-        server_index = get_server_index(serverName)
-        uuid_index = get_uuid_index(uuid)
-        
-        if (server_index is None) or (uuid is None):
-            return
-
-        # Add New Players
-        if uuid_index == None:
-            add_player(username)
-            uuid_index = get_uuid_index(uuid)
-        
-        # Add Join/Leaves w/ fixing logic
-        response = is_recentest_join(uuid_index, server_index, serverName)
-        if is_join:
-            # If Adding Join, most recent entry is a join, remove previous join
-            if response == True:
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].pop()
-            DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Joins"].append(str(Time))
-        else:
-            # If adding Leave, most recent entry is a leave, ignore adding leave
-            if response == True:
-                DB.playerstats[uuid_index]["Servers"][server_index][serverName]["Leaves"].append(str(Time))\
-        
-    except ValueError:
-        print(f'ValueError: "{uuid}" not a valid UUID.')
-    except UnboundLocalError:
-        print(f'UnboundLocalError: "{serverName}" not a valid server.')
-
-# Player ------------------------------------------------------------------------------------------------------------------------------------------------
-def add_player( username):
-    """Adds player to json, copying servers from empty"""
-    uuid = get_player_uuid(username)
-
-    if get_uuid_index(uuid):
-        print(f"ERROR: add_player {username} already exists.")
-    totem_index = get_uuid_index("")
-
-    # Create player
-    DB.playerstats.append({"UUID":uuid,"Servers":[]})
-
-    # Copy servers from empty to new
-    server_list = tag_list = []
-    for server in DB.playerstats[totem_index]["Servers"]:
-        server_list.extend(server.keys())
-        # Get tags from server
-        for tags in server.values():
-            current_tags = tags.keys()
-            # Filter out tags already present
-            for tag in current_tags:
-                if tag not in tag_list:
-                    tag_list.append(tag)
-    
-    # Add tags to servers
-    for dictname in server_list:
-        sname = {f'{dictname}':{}}
-        DB.playerstats[-1]["Servers"].append(sname)
-        for tag in tag_list:
-            DB.playerstats[-1]["Servers"][-1][dictname][tag]=[]
-    
-    print(f"ADDED: added player {username}")
-    DB.save_playerstats()
-
 # Playtime ------------------------------------------------------------------------------------------
-def calculate_playtime(joinList, leaveList, uuid_index, serverName):
-    """Computes betweentime for leave & join dt lists"""
-    total = timedelta()
+def calculate_playtime(statistics:dict) -> datetime:
+    """
+    Intelligently calculates playtime of a server for a player.
+    Usage: calculate_playtime(server.statistics) -> playtime
+    """
+    total = str_to_dt(statistics.get('total_playtime'))
+    c_index = statistics.get('calculated_index')
+    
+    # If calculated_index is less than leaves total_index, and joins == leaves return total
+    if (c_index <= len(statistics.get('leaveList'))) and (len(statistics.get('leaveList')) == len(statistics.get('leaveList'))): return total
+    leaveList, joinList = get_connect_dt_list(statistics=statistics)
+    
+    # TODO Fixing logic (if joins < leaves, fix)
+
     # Main calculate if there is a leave
     try: 
         if len(leaveList) > 0:
-            for index in range(len(leaveList)):
+            for index in range(start=c_index,stop=len(leaveList)):
                 total += (leaveList[index] - joinList[index])
-        else:
-            index = -1
+                c_index+=1
     except IndexError:
-        print(f"Index Error in Calculate Playtime: {uuid_index} {serverName} with {len(joinList)} joins and {len(leaveList)} leaves.")
+        print(f"Index Error in Calculate Playtime: {__name__}:{statistics} with {len(joinList)} joins and {len(leaveList)} leaves at {c_index} index.")
     
+    # Set Statistics
+    statistics['total_playtime'] = str(total)
+
     # If there's 1 more join than leaves
     if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
         now = datetime.utcnow()
-        total += (now - joinList[index+1])
-    return total  
+        return total + now - joinList[index+1] # Temporary increment (Doesn't set total, but does return different time)
+    return total 
 
-def get_playtime(self, uuid_index, serverIndex, serverName):
-    """Returns calculated time for server; Handles listbuilding for joins/leaves"""
-    joinList, leaveList = get_connect_dt_list(uuid_index=uuid_index,server_index=serverIndex,serverName=serverName)
-    # TODO Check if below TODO Is still relevent 
-        # TODO If joinList len == leavelist len, check if player is online, if so, then well fuck. 
-    return self.calculate_playtime(joinList, leaveList, uuid_index, serverName)
+def handle_playtime(bot, who:str,request_name:str='total'):
+    """
+    Gathers playtime for applicable servers
+    Gathers total playtime if requested
+    Passes server data by reference to calculate_playtime
+    Gathers cogs intelligently
+    """   
 
-def update_playtime(uuid_index, serverIndex, serverName, pt):
-    """Updates playtime and last computed of player by server"""
-    DB.playerstats[uuid_index]["Servers"][serverIndex][serverName]["Total Playtime"] = str(pt)
-    DB.playerstats[uuid_index]["Servers"][serverIndex][serverName]["Last Computed"] = str(datetime.utcnow())
-
-def handle_playtime(uuid_index, serverName='total'):
-    """Default:Returns total playtime for 'total', otherwise returns serverName playtime."""   
-    # TODO move to return list of dicts for total, otherwise a single dict
-    if serverName.lower() == 'total':
-        play_total = timedelta()
-        
-        serverIndex = 0
-        for server in DB.playerstats[uuid_index]["Servers"]:
-            playt = get_playtime(uuid_index, serverIndex, list(server.keys())[0])
-            update_playtime(uuid_index, serverIndex, list(server.keys())[0], playt)
-            play_total += playt
-            serverIndex += 1
-
-        DB.save_playerstats()
-        return play_total
+    if request_name.title() == "Total":
+        print("EEE: handle_playtime(request_name='total'): Not Implemented.")
     else:
-        server_index = get_server_index(serverName) 
-        playt = get_playtime(uuid_index, server_index, serverName)
-        update_playtime(uuid_index, server_index, serverName, playt)
-        DB.save_playerstats()
-        return playt
+        # Look for servername among docker_names and server_names
+        for cog in DB.get_game_cogs():
+            current = bot.get_cog(cog)
+            # Find Player
+            server_index, stats_index = current.find_player(username=who)
+
+            # Catch
+            if stats_index == None:
+                return 1 # Condition for player not found
+
+            # Ensure servername
+            if (current.servers[server_index].server_name.title() == request_name) or (current.servers[server_index].docker_name.title() == request_name):
+                return calculate_playtime(statistics=current.servers[server_index].statistics[stats_index])
+            else:
+                return 2 # Condition for player found, server != requestname

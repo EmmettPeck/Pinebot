@@ -1,16 +1,21 @@
 import asyncio
+from datetime import datetime
+import json
+import os
 from discord.ext import tasks, commands
+import discord
 
 from database import DB
 from embedding import embed_message
-from messages import MessageType, split_first
+from messages import MessageType, split_first, get_msg_dict
 from server import Server
 import analytics_lib
 
 
+
 class GameCog(commands.Cog):
     """
-    GameCog - A discord game cog w/ ChatLink & Playtime logging
+    GameCog - A discord.py cog w/ ChatLink & Playtime logging for docker games
     
     For A Game Specific Cog, Implement:
     - Send
@@ -25,7 +30,7 @@ class GameCog(commands.Cog):
         # For server in DB, check if matches game
         for cont in DB.get_containers():
             if split_first(cont.get('version'),':')[0] == self.get_version():
-                self.servers.append(Server(server=cont, bot=bot, temp_pl=self.get_player_list(cont)))
+                self.servers.append(Server(server=cont, bot=bot, temp_pl=self.get_player_list(cont),statistics=self.load_statistics(cont.get('docker_name'))))
 
         # Ensure fingerprinted messages before cog was online
         for server in self.servers:
@@ -51,6 +56,94 @@ class GameCog(commands.Cog):
         for server in self.servers:
             if server.cid == cid: return server
         return None
+
+    def find_player(self, username:str, server:Server=None, uuid=None) -> tuple:
+        """
+        Finds player statistics object, returns index of it. Accounts for UUIDs
+        Returns [serverIndex, statisticsIndex] with no server, otherwise returns statisticsIndex
+        """
+        s = 0
+        i = 0
+        if not uuid:
+            uuid = self.get_uuid(username=username)
+
+        if server:
+            if uuid:
+                for stat in server.statistics:
+                        if stat['uuid'] == uuid:
+                            return i
+                        i+=1
+            else:
+                for stat in server.statistics:
+                        if stat['user'] == uuid:
+                            return i
+                        i+=1
+        else:
+            if uuid:
+                for server in self.servers:
+                    for stat in server.statistics:
+                        if stat['uuid'] == uuid:
+                            return s, i
+                        i+=1
+                    s+=1
+            else:
+                for server in self.servers:
+                    for stat in server.statistics:
+                        if stat['user'] == uuid:
+                            return s, i
+                        i+=1
+                    s+=1
+        return None
+    # Local Statistics Save/Load/Create ---------------------------------------------------------------------------------------------------------------------------------------------------------
+    def load_statistics(self, docker_name:str) -> list:
+        """
+        For each file in data/servers/{CogName}/{docker_name}, appends dict to list
+        Returns list
+        """
+        stats = []
+        try:
+            for path in os.listdir(f'data/servers/{__name__}/{docker_name}'):
+                with open(path) as f:
+                    stats.append(json.load(f))
+        except FileNotFoundError:
+            raise NotImplementedError(f"{__name__} Error: No files found for load_statistics")
+        else:
+            return stats
+        
+    def create_statistics(self, server, username:str=None, uuid:str=None):
+        """
+        Creates a statistics file with given structure for username in server
+        {
+            username:'',
+            uuid:'',
+            total_playtime:'',
+            calculated_index:0,
+            joins:[],
+            leaves:[]
+        }
+        """
+        dict = {'total_playtime':'', 'calculated_index':0, 'joins':[], 'leaves':[]}
+        if username: dict['username'], filename = username
+        if uuid: dict['uuid'], filename = uuid
+        
+        with open(f'data/servers/{__name__}/{server.docker_name}/{filename}.json', 'w') as f:
+            json.dump(dict, f, indent=2)
+
+    def save_statistics(self, server, filename:str, index:int=None):
+        ''' 
+        Saves file from server statistics dict w/ filename
+        ''' 
+        try:
+            if index:
+                with open(f'data/servers/{__name__}/{server.docker_name}/{filename}.json', 'w') as f:
+                     json.dump(server.statistics[index], f, indent = 2)
+            else:
+                with open(f'data/servers/{__name__}/{server.docker_name}/{filename}.json', 'w') as f:
+                    json.dump(next(d for i,d in enumerate(server.statistics) if filename in d), f, indent = 2)
+        except FileNotFoundError:
+            raise NotImplementedError(f"{server.server_name}.{__name__} Error: {filename} does not exist in current filestructure")
+        except  StopIteration:
+            raise NotImplementedError(f"{server.server_name}.{__name__} Error: {filename} does not exist in statistics database")
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # GameCog Functions
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -89,35 +182,45 @@ class GameCog(commands.Cog):
         # Fingerprints message, only uniques get sent
         if not server.fingerprint.is_unique_fingerprint(message): return
 
+        # Filter message into a dictionary
+        dict = get_msg_dict(username="__default__",message=message,MessageType=MessageType.MSG,color=discord.Color.blue())
+
         # If Not Ignore, Messages are sent and accounted for playtime
-        if message and (not ignore):
-            mtype = message.get('type')
+        if dict and (not ignore):
+            mtype =dict.get('type')
             if mtype == MessageType.JOIN or mtype == MessageType.LEAVE:
-                message["server"] = server.server_name #TODO Unsafe access?
-                server.connect_queue.put(message)
-            server.message_queue.put(message)
+                dict["server"] = server.server_name
+                server.connect_queue.put(dict)
+            server.message_queue.put(dict)
 
     # Analytics -------------------------------------------------------------------------------------------------------------------------------------------------------------
-    def is_player_online(self, server, uuid_index:int = None, playername:str = None) -> bool:
+    def get_uuid(self, username):
         """
-        If uuid_index or playername in online_players: Returns True, else False
+        To Be Overloaded
+        Returns UUID of username if present, otherwise returns none.
         """
-        if uuid_index:
-            for player in server.online_players:
-                if analytics_lib.get_player_uuid(player) == DB.playerstats[uuid_index]["UUID"]: return True
-            return False
-        elif playername:
+
+        return None
+
+    def is_player_online(self, server, playername:str = None) -> bool:
+        """
+        To be overloaded
+        If playername in online_players: Returns True, else False
+        Not certain for checking if a player is online, they may be online when this is false.
+        """
+        if playername:
             for player in server.online_players:
                 if playername == player: return True
             return False
-        raise NotImplementedError("is_player_online: Called without True uuid or playername.")
-    # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-    def handle_connect_queue(self, server:Server):
+        raise NotImplementedError("is_player_online: Called without True playername.")
+    
+    async def handle_connect_queue(self, server:Server):
         """
         Handles connect queue, saving playerstats after modifications, adding modifications to playtime as appropriate
         """
         # Quick Return
         if server.connect_queue.qsize() == 0: return
+        save_list = [] # Logging indexes that need to be saved
 
         # Add Events
         while not server.connect_queue.qsize() == 0:
@@ -127,19 +230,52 @@ class GameCog(commands.Cog):
             temp = x.get('type')
             if temp == None: raise NotImplementedError(f"handle_connect_queue none 'type': {x}")
             join = True if temp == MessageType.JOIN else False
-            analytics_lib.add_connect_event(x['username'], x['server'], join, x['time']) # TODO #46
             
+            # Player Index Finding &Addition
+            try:
+                user = x.get('username')
+                uuid = self.get_uuid(user)
+                player_index = self.find_player(username=user,server=server, uuid=uuid)
+            except StopIteration:
+                if uuid:
+                    self.create_statistics(server=server,username=user, uuid=uuid)
+                else:
+                    self.create_statistics(server=server,username=user)
+                try:
+                    player_index = self.find_player(username=user,server=server, uuid=uuid)
+                except StopIteration:
+                    raise NotImplementedError(f"{__name__}:{server.server_name} handle_connect_queue: {user}:{uuid} player not present in server.statistics {server.statistics}")
+            
+            # Add Connect Events w/ fixing logic
+            recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics)
+            try:
+                if join == True:
+                    # If Adding Join, most recent entry is a join, remove previous join
+                    if recentest_is_join == True:
+                        server.statistics[player_index]['joins'].pop()
+                    server.statistics[player_index]['joins'].append(str(x.get('time')))
+                elif join == False: 
+                    # If adding Leave, most recent entry is a leave, ignore adding leave
+                    if recentest_is_join == True:
+                        server.statistics[player_index]['leaves'].append(str(x.get('time')))
+                save_list.append({'index':player_index,'uuid':uuid,'user':user})
+            except:
+                print(f"{__name__}:{x} event not added.")
+
             # Online Logging
             if join and not (x['username'] in server.online_players):
                 server.online_players.append(x['username'])
             elif (not join) and (x['username'] in server.online_players): 
                 server.online_players.remove(x['username'])
 
-        # Update Header & Save
+        # Update Header
         loop = asyncio.get_event_loop()
         loop.create_task(self.header_update(server=server))
-        DB.save_playerstats()
 
+        # Save
+        for index in save_list:
+            if index.get('uuid'): self.save_statistics(server=server, filename=index.get('uuid'),index=index.get('index'))
+            else: self.save_statistics(server=server, filename=index.get('user'),index=index.get('index'))
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # Chat-Link
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -153,8 +289,10 @@ class GameCog(commands.Cog):
             # Message Queue
             while not server.message_queue.qsize() == 0: 
                 await server.ctx.send(embed=embed_message(server.message_queue.get()))
-            # Connect Queue
-            self.handle_connect_queue(server=server)
+            
+            # Schedule Connect Queue
+            loop = asyncio.get_event_loop()
+            loop.create_task(self.handle_connect_queue(server=server))
     @pass_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 
@@ -170,6 +308,7 @@ class GameCog(commands.Cog):
 
     def send_message(self, server:Server, formatted_msg):
         """
+        To Be Overloaded:
         Sends Message To Server Based On Version Implementation:
          - If no consolebased say command, does nothing.
         """
@@ -197,7 +336,7 @@ class GameCog(commands.Cog):
         """
         Updates Linked Discord Channel Heading
         """
-        await server.ctx.edit(topic=f"{server.server_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else '∞'} | Status: {container_status}")
+        await server.ctx.edit(topic=f"{__name__} {server.server_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else '∞'} | Status: {container_status}")
     
     def get_player_list(self, server:dict=None) -> list:
         """

@@ -29,35 +29,30 @@ class Analytics(commands.Cog):
 # Commands ------------------------------------------------------------------------------------------
     @commands.command(name='playtime',help='Returns playtime on pineservers. >playtime <player-name> <server-name>, otherwise returns total of player.',brief='Get total playtime.')
     async def playtime(self, ctx, name=None, server=None):
-        uuid = analytics_lib.get_player_uuid(name)
-        uuid_index = analytics_lib.get_uuid_index(uuid)
 
         # Name Catch
         if name == None:
             await ctx.send("Please provide a playername, >playertime <name> <optional-server>")
             return
 
-        # Catch wrong names
-        if uuid_index == None:
-            await ctx.send("Player name not recognized. Either misspelled or hasn't played on Pineserver.")
-            return
-
         # Total
         if server == None:
-            total = analytics_lib.handle_playtime(uuid_index)
+            total = analytics_lib.handle_playtime(bot=self.bot, request_name=server.title(), who=name)
             await ctx.send(embed = embed_build(f"{name} has played for `{analytics_lib.td_format(total)}` across all servers."))
             return
 
         # Specific Server Playtime
         else: 
-            single = analytics_lib.handle_playtime(uuid_index, server.title())
+            single = analytics_lib.handle_playtime(bot=self.bot, request_name=server.title(), who=name)
             if single:
-                await ctx.send(embed = embed_build(f"{name} has played for `{analytics_lib.td_format(single)}` on {server.title()}."))
+                await ctx.send(embed = embed_build(f"Player `{name}` has played for `{analytics_lib.td_format(single)}` on `{server.title()}`."))
                 return
-            elif single == timedelta():
-                await ctx.send(embed = embed_build(f"{name} hasn't played on {server.title()}."))
+            elif single == 2:
+                await ctx.send(embed = embed_build(f"Player name `{name}` found, server not found. Are you sure `{server.title()}` is a server?"))
+            elif single == 1:
+                await ctx.send(embed = embed_build(f"Player name `{name}` not found."))
             else:
-                await ctx.send(embed = embed_build(f"Server not found."))
+                await ctx.send(embed = embed_build(f"Edge Case --- Not Implemented"))
 # ---------------------------------------------------------------------------------------------------
 
 def setup(bot):

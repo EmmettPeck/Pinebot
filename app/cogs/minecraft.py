@@ -8,8 +8,10 @@ from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
 from database import DB
 from messages import MessageType, get_between, get_msg_dict, split_first
+from pinebot.app.username_to_uuid import UsernameToUUID
 from server import Server
 from embedding import embed_build
+import analytics_lib 
 
 from cogs.gamecog import GameCog
 
@@ -64,6 +66,12 @@ class Minecraft(GameCog):
     def get_version(self):
         return "Minecraft"
 
+    def get_uuid(self, username):
+        """Get player UUID from username"""
+        converter = UsernameToUUID(username)
+        uuid = converter.get_uuid()
+        return uuid
+
     def send(self, server:Server, command, logging=False) -> str: 
         """
         OVERLOAD: 
@@ -114,6 +122,21 @@ class Minecraft(GameCog):
 
             server.online_players = player_list
             server.player_max = player_max
+
+    def is_player_online(self, server, uuid_index:int = None, playername:str = None) -> bool:
+        """
+        OVERLOAD: Minecraft
+        If uuid_index or playername in online_players: Returns True, else False
+        """
+        if uuid_index:
+            for player in server.online_players:
+                if analytics_lib.get_player_uuid(player) == DB.playerstats[uuid_index]["UUID"]: return True
+            return False
+        elif playername:
+            for player in server.online_players:
+                if playername == player: return True
+            return False
+        raise NotImplementedError("is_player_online: Called without True uuid or playername.")
 
     # Filter--------------------------------------------------------------------------------------------------------------------------------------------
     def filter(self, server:Server, message:str, ignore=False):

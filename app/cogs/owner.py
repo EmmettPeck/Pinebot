@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from database import DB, add_server,rename_server
+from database import DB, add_server
 from messages import split_first
 
 class OwnerCog(commands.Cog):
@@ -52,7 +52,7 @@ class OwnerCog(commands.Cog):
         else:
             await ctx.send(f"Server {rDict} Removed Successfully")
             print(f"Server {rDict} Removed Successfully")
-            
+
 # Cog Load Functions ------------------------------------------------------------------------------------------------------------------------------
     @commands.command(name='load', hidden=True)
     @commands.is_owner()
