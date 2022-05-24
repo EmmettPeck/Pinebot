@@ -8,10 +8,11 @@ from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
 from database import DB
 from messages import MessageType, get_between, get_msg_dict, split_first
-from pinebot.app.username_to_uuid import UsernameToUUID
+from username_to_uuid import UsernameToUUID
 from server import Server
 from embedding import embed_build
 import analytics_lib 
+
 
 from cogs.gamecog import GameCog
 
@@ -63,7 +64,7 @@ class Minecraft(GameCog):
 
 # OVERLOADS ----------------------------------------------------------------------------------
 
-    def get_version(self):
+    def get_version(self) -> str:
         return "Minecraft"
 
     def get_uuid(self, username):
@@ -72,7 +73,7 @@ class Minecraft(GameCog):
         uuid = converter.get_uuid()
         return uuid
 
-    def send(self, server:Server, command, logging=False) -> str: 
+    def send(self, server:Server, command, logging=True) -> list: 
         """
         OVERLOAD: 
         Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
@@ -90,7 +91,7 @@ class Minecraft(GameCog):
         resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
         
         if logging:
-            print(f"\nSent MC command /{command} to {server.server_name}.{__name__}:")
+            print(f"\nSent MC command {command} to {server.server_name}.{__name__}:")
             print(f' --- {resp_str}')
         return resp_str
 
@@ -110,18 +111,18 @@ class Minecraft(GameCog):
         player_list = []
         response = self.send(server=server,command="/list")
         if not response: return None
-        player_max = response.split("max of").split(maxsplit= 1)
-        stripped = response.split("online:")
+        player_max = int(response.split("max of",maxsplit=1)[1].split(maxsplit= 1)[0])
+        stripped = response.split("online:")[1].strip()
         try:
-            for player in stripped[1].split(','):
+            for player in stripped.split(','):
                 player_list.append(player.strip())
         except IndexError:
             return None
         else:
             if player_list == ['']: return None
 
-            server.online_players = player_list
             server.player_max = player_max
+            return player_list
 
     def is_player_online(self, server, uuid_index:int = None, playername:str = None) -> bool:
         """
@@ -146,6 +147,7 @@ class Minecraft(GameCog):
         """
         # Fingerprint Filtering
         if server.fingerprint.is_unique_fingerprint(message):
+            post = None
 
             # Ensure '[Server thread/INFO]:' ----------------------------------------------------------------------
             info_split = message.split('] [Server thread/INFO]',1)
@@ -184,12 +186,12 @@ class Minecraft(GameCog):
                 if dm.is_death():
                     post = get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.red())
 
-        # If Not Ignore, Messages are sent and accounted for playtime
-        if post and (not ignore):
-            if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                post["server"] = server.server_name
+            # If Not Ignore, Messages are sent and accounted for playtime
+            if post and (not ignore):
+                if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
+                    post["server"] = server.server_name
+                    server.message_queue.put(post)
                 server.message_queue.put(post)
-            server.message_queue.put(post)
 
 # Deaths--------------------------------------------------------------------------------------------------------------------------------------------
 class Death:
@@ -211,4 +213,4 @@ class Death:
 # ------------------------------------------------------------------------------------------------------------------------------------------------
 
 def setup(bot):
-    bot.add_cog(Minecraft(bot))      
+    bot.add_cog(Minecraft(bot))

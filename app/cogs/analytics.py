@@ -19,10 +19,6 @@ class Analytics(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.connect_event_handler.start()
-
-    def cog_unload(self):
-        self.connect_event_handler.cancel()
     
 # ---------------------------------------------------------------------------------------------------
         
@@ -33,6 +29,10 @@ class Analytics(commands.Cog):
         # Name Catch
         if name == None:
             await ctx.send("Please provide a playername, >playertime <name> <optional-server>")
+            return
+
+        if server == None:
+            await ctx.send("Please provide a server, >playertime <name> <optional-server>")
             return
 
         # Total

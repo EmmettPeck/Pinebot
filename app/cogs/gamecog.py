@@ -8,6 +8,7 @@ import discord
 from database import DB
 from embedding import embed_message
 from messages import MessageType, split_first, get_msg_dict
+from fingerprints import FingerPrints
 from server import Server
 import analytics_lib
 
@@ -30,7 +31,24 @@ class GameCog(commands.Cog):
         # For server in DB, check if matches game
         for cont in DB.get_containers():
             if split_first(cont.get('version'),':')[0] == self.get_version():
-                self.servers.append(Server(server=cont, bot=bot, temp_pl=self.get_player_list(cont),statistics=self.load_statistics(cont.get('docker_name'))))
+                server = Server(server=cont, 
+                bot=self.bot, 
+                cid=cont.get("channel_id"),
+                statistics=[],
+                online_players=[],
+                server_name=cont.get('name'),
+                docker_name=cont.get('docker_name'),
+                version=cont.get('version'),
+                fingerprint = FingerPrints(cont.get('docker_name')),
+                )
+                # Load Statistics & discordserver
+                server.statistics=self.load_statistics(server),
+
+                # Update Online List
+                pl = self.get_player_list(server)
+                server.online_players = pl if pl else []
+
+                self.servers.append(server)
 
         # Ensure fingerprinted messages before cog was online
         for server in self.servers:
@@ -38,6 +56,13 @@ class GameCog(commands.Cog):
 
         # Start Loop Functions
         self.pass_message.start()
+
+
+    # Update Headers On Launch
+    @commands.Cog.listener()
+    async def on_ready(self):
+        for server in self.servers:
+            await self.header_update(server=server)
 
     # Cog Functions ----------------------------------------------------------------------------------------------------------------------------------------------------------------
     def cog_unload(self):
@@ -71,11 +96,13 @@ class GameCog(commands.Cog):
             if uuid:
                 for stat in server.statistics:
                         if stat['uuid'] == uuid:
+                            print("Got user with server and uuid")
                             return i
                         i+=1
             else:
                 for stat in server.statistics:
                         if stat['user'] == uuid:
+                            print("Got user with server and no uuid")
                             return i
                         i+=1
         else:
@@ -83,6 +110,7 @@ class GameCog(commands.Cog):
                 for server in self.servers:
                     for stat in server.statistics:
                         if stat['uuid'] == uuid:
+                            print("Got user without server and uuid")
                             return s, i
                         i+=1
                     s+=1
@@ -90,23 +118,25 @@ class GameCog(commands.Cog):
                 for server in self.servers:
                     for stat in server.statistics:
                         if stat['user'] == uuid:
+                            print("Got user without server and no uuid")
                             return s, i
                         i+=1
                     s+=1
         return None
     # Local Statistics Save/Load/Create ---------------------------------------------------------------------------------------------------------------------------------------------------------
-    def load_statistics(self, docker_name:str) -> list:
+    def load_statistics(self, server:Server) -> list:
         """
         For each file in data/servers/{CogName}/{docker_name}, appends dict to list
         Returns list
         """
         stats = []
         try:
-            for path in os.listdir(f'data/servers/{__name__}/{docker_name}'):
+            for path in os.listdir(f'data/servers/{__name__}/{server.docker_name}'):
                 with open(path) as f:
                     stats.append(json.load(f))
         except FileNotFoundError:
-            raise NotImplementedError(f"{__name__} Error: No files found for load_statistics")
+            # raise NotImplementedError(f"{__name__} Error: No files found for load_statistics")
+            pass
         else:
             return stats
         
@@ -214,23 +244,24 @@ class GameCog(commands.Cog):
             return False
         raise NotImplementedError("is_player_online: Called without True playername.")
     
-    async def handle_connect_queue(self, server:Server):
+    def handle_connect_queue(self, server:Server):
         """
         Handles connect queue, saving playerstats after modifications, adding modifications to playtime as appropriate
         """
         # Quick Return
-        if server.connect_queue.qsize() == 0: return
+        #if server.connect_queue.qsize() == 0: return
         save_list = [] # Logging indexes that need to be saved
 
         # Add Events
-        while not server.connect_queue.qsize() == 0:
+        while not (server.connect_queue.qsize() == 0):
+            print("Inside whilenot")
             x = server.connect_queue.get()
-            
+            print(f"Got {x}")
             # Add Event
             temp = x.get('type')
             if temp == None: raise NotImplementedError(f"handle_connect_queue none 'type': {x}")
             join = True if temp == MessageType.JOIN else False
-            
+            print(f"join = {join}")
             # Player Index Finding &Addition
             try:
                 user = x.get('username')
@@ -268,11 +299,13 @@ class GameCog(commands.Cog):
             elif (not join) and (x['username'] in server.online_players): 
                 server.online_players.remove(x['username'])
 
-        # Update Header
-        loop = asyncio.get_event_loop()
-        loop.create_task(self.header_update(server=server))
+            
 
-        # Save
+        # Save & Update Header
+        if save_list:
+            loop = asyncio.get_event_loop()
+            loop.create_task(self.header_update(server=server))
+
         for index in save_list:
             if index.get('uuid'): self.save_statistics(server=server, filename=index.get('uuid'),index=index.get('index'))
             else: self.save_statistics(server=server, filename=index.get('user'),index=index.get('index'))
@@ -284,15 +317,14 @@ class GameCog(commands.Cog):
     @tasks.loop(seconds=DB.get_chat_link_time())
     async def pass_message(self):
         for server in self.servers:
-            self.read(server.cid)
+            self.read(server)
+            ctx = self.bot.get_channel(server.cid)
 
             # Message Queue
-            while not server.message_queue.qsize() == 0: 
-                await server.ctx.send(embed=embed_message(server.message_queue.get()))
-            
-            # Schedule Connect Queue
-            loop = asyncio.get_event_loop()
-            loop.create_task(self.handle_connect_queue(server=server))
+            while not (server.message_queue.qsize() == 0): 
+                await ctx.send(embed=embed_message(server.message_queue.get()))
+
+            self.handle_connect_queue(server=server)
     @pass_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 
@@ -304,7 +336,7 @@ class GameCog(commands.Cog):
             return
         for server in self.servers:
             if message.channel.id == server.cid:
-                self.send_message(self, server=server, formatted_msg = self.discord_message_format(server=server,message=message))
+                self.send_message(server=server, formatted_msg=self.discord_message_format(server=server,message=message))
 
     def send_message(self, server:Server, formatted_msg):
         """
@@ -336,7 +368,9 @@ class GameCog(commands.Cog):
         """
         Updates Linked Discord Channel Heading
         """
-        await server.ctx.edit(topic=f"{__name__} {server.server_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else '∞'} | Status: {container_status}")
+        ctx = self.bot.get_channel(server.cid)
+        await ctx.edit(topic=f"{split_first(server.version, ':')[0]} {server.server_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else 'ꝏ'} | Status: {container_status}")
+        print(f"{server.server_name}.{__name__}: Header Updated")
     
     def get_player_list(self, server:dict=None) -> list:
         """

@@ -13,7 +13,7 @@ from messages import split_first, MessageType, get_msg_dict
 class Factorio(GameCog):
 
     # OVERLOADS ---------------------------------------------------------------------------
-    def get_version(self):
+    def get_version(self) -> str:
         return "Factorio"
 
     def filter(self, server:Server, message:str, ignore=False):
@@ -22,7 +22,7 @@ class Factorio(GameCog):
         Filters logs by version, adding leaves/joins to connectqueue and messages to message queue
         """
         if server.fingerprint.is_unique_fingerprint(message):
-
+            post = None
             time = split_first(message,'[')[0].strip()
             in_brackets = split_first(split_first(message,'[')[1],']')[0]
             after_brackets = split_first(message,']')[1]
@@ -46,12 +46,12 @@ class Factorio(GameCog):
                 name = after_brackets.strip().split(' ',1)[0]
                 post =  get_msg_dict(name, msg, type, discord.Color.dark_gold())
 
-        # If Not Ignore, Messages are sent and accounted for playtime
-        if post and (not ignore):
-            if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                post["server"] = server.server_name
+            # If Not Ignore, Messages are sent and accounted for playtime
+            if post and (not ignore):
+                if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
+                    post["server"] = server.server_name
+                    server.message_queue.put(post)
                 server.message_queue.put(post)
-            server.message_queue.put(post)
 
 def setup(bot):
     bot.add_cog(Factorio(bot))
