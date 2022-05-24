@@ -8,7 +8,7 @@ from enum import Enum
 from datetime import datetime
 from database import DB
 
-def split_first(split_str, character):
+def split_first(split_str, character) -> tuple:
     """Splits by first instance of character. split_first('Hi[Emmett]','[') --> ['Hi','Emmett]']"""
     index = split_str.find(character)
     before, after = "",""
@@ -18,9 +18,9 @@ def split_first(split_str, character):
         if i > index:
             after += split_str[i]
 
-    return [before, after]
+    return before, after
 
-def get_between(in_str, beginning_char, end_char):
+def get_between(in_str, beginning_char, end_char) -> str:
     '''Gets text between first instance of beginning_char and first instance of end_char'''
     string = ""
     middle = split_first(in_str,beginning_char)[1]
@@ -56,4 +56,4 @@ def get_msg_dict(username, message, MessageType, color):
         """Appends and prints messages to return_list as dictionaries"""
         local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.utcnow(), 'color': color}
         print (f" --- Time:{local_dict['time']}, User:{username}, Msg:{message}, Type:{MessageType}")
-        return local_dict   
+        return local_dict
