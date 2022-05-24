@@ -2,13 +2,13 @@ import asyncio
 from datetime import datetime
 import json
 import os
+from typing import Type
 from discord.ext import tasks, commands
 import discord
 
 from database import DB
 from embedding import embed_message
 from messages import MessageType, split_first, get_msg_dict
-from fingerprints import FingerPrints
 from server import Server
 import analytics_lib
 
@@ -30,13 +30,13 @@ class GameCog(commands.Cog):
         
         # Adds containers based on gameversion to appropriate cog 
         for cont in DB.get_containers():
-            if split_first(cont.get('version'),':')[0] == self.get_version():
-                server = Server(server=cont, bot=self.bot, statistics=self.load_statistics(cont.get('docker_name')))
+            cog_name = split_first(cont.get('version'),':')[0]
+            if cog_name == self.get_version():
+                server = Server(server=cont, bot=self.bot, statistics=self.load_statistics(cog_name=cog_name,server_name=cont.get('name')),cog_name=cog_name)
 
                 # Update Online List
                 pl = self.get_player_list(server)
                 server.online_players = pl if pl else []
-
                 self.servers.append(server)
         # Ensure fingerprinted messages before cog was online
         for server in self.servers:
@@ -44,7 +44,6 @@ class GameCog(commands.Cog):
 
         # Start Loop Functions
         self.pass_message.start()
-
 
     # Update Headers On Launch
     @commands.Cog.listener()
@@ -66,8 +65,10 @@ class GameCog(commands.Cog):
         """
         Returns the server object with a matching cid, otherwise returns None
         """
+        i = 0
         for server in self.servers:
-            if server.cid == cid: return server
+            if server.cid == cid: return i
+            i+=1
         return None
 
     def find_player(self, username:str, server:Server=None, uuid=None) -> tuple:
@@ -79,52 +80,60 @@ class GameCog(commands.Cog):
         i = 0
         if not uuid:
             uuid = self.get_uuid(username=username)
+        try:
+            if server:
+                if uuid:
+                    for stat in server.statistics:
+                            if stat['uuid'] == uuid:
+                                print("Got user with server and uuid")
+                                return i
+                            i+=1
+                else:
+                    for stat in server.statistics:
+                            if stat['user'] == username:
+                                print("Got user with server and no uuid")
+                                return i
+                            i+=1
+            else:
+                if uuid:
+                    for server in self.servers:
+                        for stat in server.statistics:
+                            if stat['uuid'] == uuid:
+                                print("Got user without server and uuid")
+                                return s, i
+                            i+=1
+                        s+=1
+                else:
+                    for server in self.servers:
+                        for stat in server.statistics:
+                            if stat['user'] == username:
+                                print("Got user without server and no uuid")
+                                return s, i
+                            i+=1
+                        s+=1
+        except:
+            return None
 
-        if server:
-            if uuid:
-                for stat in server.statistics:
-                        if stat['uuid'] == uuid:
-                            print("Got user with server and uuid")
-                            return i
-                        i+=1
-            else:
-                for stat in server.statistics:
-                        if stat['user'] == uuid:
-                            print("Got user with server and no uuid")
-                            return i
-                        i+=1
-        else:
-            if uuid:
-                for server in self.servers:
-                    for stat in server.statistics:
-                        if stat['uuid'] == uuid:
-                            print("Got user without server and uuid")
-                            return s, i
-                        i+=1
-                    s+=1
-            else:
-                for server in self.servers:
-                    for stat in server.statistics:
-                        if stat['user'] == uuid:
-                            print("Got user without server and no uuid")
-                            return s, i
-                        i+=1
-                    s+=1
-        return None
     # Local Statistics Save/Load/Create ---------------------------------------------------------------------------------------------------------------------------------------------------------
-    def load_statistics(self, docker_name:str) -> list:
+    def load_statistics(self, cog_name:str, server_name:str) -> list:
         """
-        For each file in data/servers/{CogName}/{docker_name}, appends dict to list
+        For each file in ../../data/servers/{CogName}/{docker_name}, appends dict to list
         Returns list
         """
         stats = []
         try:
-            for path in os.listdir(f'data/servers/{__name__}/{docker_name}'):
-                with open(path) as f:
+            # Ensure directory existance
+            path = f'../../data/servers/{cog_name}/{server_name}'
+            if not os.path.exists(path):
+                os.makedirs(path)
+
+            # For file in folder
+            for item in os.listdir(f'../../data/servers/{cog_name}/{server_name}'):
+                with open(item) as f:
                     stats.append(json.load(f))
         except FileNotFoundError:
-            # raise NotImplementedError(f"{__name__} Error: No files found for load_statistics")
-            pass
+            print(f"{server_name}.{__name__} Error: No files found for load_statistics")
+            return []
         else:
             return stats
         
@@ -140,28 +149,37 @@ class GameCog(commands.Cog):
             leaves:[]
         }
         """
-        dict = {'total_playtime':'', 'calculated_index':0, 'joins':[], 'leaves':[]}
-        if username: dict['username'], filename = username
-        if uuid: dict['uuid'], filename = uuid
+        # Build Dict
+        dict = {'username':'','uuid':'','total_playtime':'', 'calculated_index':0, 'joins':[], 'leaves':[]}
+        if username: dict['username']= filename = username
+        if uuid: dict['uuid']= filename = uuid
         
-        with open(f'data/servers/{__name__}/{server.docker_name}/{filename}.json', 'w') as f:
+        # Build File
+        print(f"Adding player: {username} at ../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json")
+        with open(f'../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json', 'w+') as f:
             json.dump(dict, f, indent=2)
 
-    def save_statistics(self, server, filename:str, index:int=None):
+        # Add to stats (Need to affect self.)
+        try:
+            self.servers[self.find_server(server.cid)].statistics.append(dict)
+        except:
+            raise NotImplemented("Create Statistics: Server Not Present")
+
+    def save_statistics(self, server:Server, filename:str, index:int=None):
         ''' 
         Saves file from server statistics dict w/ filename
         ''' 
         try:
             if index:
-                with open(f'data/servers/{__name__}/{server.docker_name}/{filename}.json', 'w') as f:
+                with open(f'../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json', 'w') as f:
                      json.dump(server.statistics[index], f, indent = 2)
             else:
-                with open(f'data/servers/{__name__}/{server.docker_name}/{filename}.json', 'w') as f:
-                    json.dump(next(d for i,d in enumerate(server.statistics) if filename in d), f, indent = 2)
+                with open(f'../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json', 'w') as f:
+                    json.dump(self.servers[self.find_server(server.cid)], f, indent = 2)
         except FileNotFoundError:
-            raise NotImplementedError(f"{server.server_name}.{__name__} Error: {filename} does not exist in current filestructure")
-        except  StopIteration:
-            raise NotImplementedError(f"{server.server_name}.{__name__} Error: {filename} does not exist in statistics database")
+            raise NotImplementedError(f"{server.server_name}.{server.cog_name} Error: {filename} does not exist in current filestructure")
+        except:
+            raise NotImplementedError(f"{server.server_name}.{server.cog_name} Error: {filename} does not exist in statistics database")
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
     # GameCog Functions
     # -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -189,7 +207,7 @@ class GameCog(commands.Cog):
         resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
 
         if logging:
-            print(f"\nSent {command} to {server.server_name}.{__name__}:")
+            print(f"\nSent {command} to {server.server_name}.{server.cog_name}:")
             print(f' --- {resp_str}')
         return resp_str
     
@@ -242,31 +260,28 @@ class GameCog(commands.Cog):
 
         # Add Events
         while not (server.connect_queue.qsize() == 0):
-            print("Inside whilenot")
             x = server.connect_queue.get()
-            print(f"Got {x}")
-            # Add Event
+            
+            # Event Type
             temp = x.get('type')
             if temp == None: raise NotImplementedError(f"handle_connect_queue none 'type': {x}")
             join = True if temp == MessageType.JOIN else False
-            print(f"join = {join}")
-            # Player Index Finding &Addition
-            try:
-                user = x.get('username')
-                uuid = self.get_uuid(user)
-                player_index = self.find_player(username=user,server=server, uuid=uuid)
-            except StopIteration:
+            
+            # Player Index Finding
+            user = x.get('username')
+            uuid = self.get_uuid(user)
+            player_index = self.find_player(username=user,server=server, uuid=uuid)
+
+            # Add Player
+            if player_index == None:
+                print(f"{server.server_name}.{server.cog_name} handle_connect_queue: {user}:{uuid} player not present in server.statistics {server.statistics}")
                 if uuid:
                     self.create_statistics(server=server,username=user, uuid=uuid)
                 else:
                     self.create_statistics(server=server,username=user)
-                try:
-                    player_index = self.find_player(username=user,server=server, uuid=uuid)
-                except StopIteration:
-                    raise NotImplementedError(f"{__name__}:{server.server_name} handle_connect_queue: {user}:{uuid} player not present in server.statistics {server.statistics}")
             
             # Add Connect Events w/ fixing logic
-            recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics)
+            recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics[player_index])
             try:
                 if join == True:
                     # If Adding Join, most recent entry is a join, remove previous join
@@ -279,7 +294,7 @@ class GameCog(commands.Cog):
                         server.statistics[player_index]['leaves'].append(str(x.get('time')))
                 save_list.append({'index':player_index,'uuid':uuid,'user':user})
             except:
-                print(f"{__name__}:{x} event not added.")
+                print(f"{server.cog_name}:{x} event not added.")
 
             # Online Logging
             if join and not (x['username'] in server.online_players):
@@ -341,7 +356,7 @@ class GameCog(commands.Cog):
          - Logs to console
         """
         item = f"<{message.author.name}> {message.content}"
-        print(f" {server.server_name}.{__name__}: {item}")
+        print(f" {server.server_name}.{server.cog_name}: {item}")
         return item
                 
     # Headers -------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -356,8 +371,8 @@ class GameCog(commands.Cog):
         Updates Linked Discord Channel Heading
         """
         ctx = self.bot.get_channel(server.cid)
-        await ctx.edit(topic=f"{split_first(server.version, ':')[0]} {server.server_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else 'ꝏ'} | Status: {container_status}")
-        print(f"{server.server_name}.{__name__}: Header Updated")
+        await ctx.edit(topic=f"{server.server_name}.{server.cog_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else 'ꝏ'} | Status: {container_status}")
+        print(f"{server.server_name}.{server.cog_name}: Header Updated")
     
     def get_player_list(self, server:dict=None) -> list:
         """

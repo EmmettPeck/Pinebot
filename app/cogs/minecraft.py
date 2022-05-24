@@ -26,7 +26,7 @@ class Minecraft(GameCog):
     async def whitelist(self, ctx, *, mess):
         ''' Whitelists <args> to corresponding server as is defined in DChannels if user has applicable role'''
         # TODO server ARG
-        response = self.send(server=self.find_server(ctx.channel.id), command=f"whitelist add {mess}",logging=True)
+        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command=f"whitelist add {mess}",logging=True)
         if response:
             await ctx.send(response)
         else:
@@ -41,7 +41,7 @@ class Minecraft(GameCog):
     @has_permissions(administrator=True)
     async def send(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
-        response = self.send(server=self.find_server(ctx.channel.id), command=mess, logging=True)
+        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command=mess, logging=True)
         if response:
             await ctx.send(response)
         else:
@@ -54,7 +54,7 @@ class Minecraft(GameCog):
     # List -------------------------------------------------------------------------------------------------------------------------------------------------------
     @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
     async def list(self, ctx):
-        response = self.send(server=self.find_server(ctx.channel.id), command="/list")
+        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command="/list")
         
         await ctx.message.delete()
         if response:

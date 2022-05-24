@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import discord
 from fingerprints import FingerPrints
 import queue
-
+from messages import split_first
 
 
 @dataclass
@@ -16,6 +16,7 @@ class Server:
     cid: int = None                     # Channel ID
     server_name: str = None             # Server Name
     docker_name: str = None             # Docker Name
+    cog_name: str = None
     version: str = None                 # Server Version
     fingerprint: FingerPrints = None    # Fingerprint instance
     connect_queue: queue.Queue = None   # Connect Queue
