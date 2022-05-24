@@ -7,29 +7,37 @@ Embedded text blocks for a variety of discord bot purposes
 import discord
 
 from messages import get_type_icon
+from datetime import datetime
 
-def embed_server_list(input):
-    #table = ["Title", {"name": "server","desc":"description"}]
-    embed = discord.Embed(title = input[0], color = discord.Color.dark_blue())
-    for i in range(len(input)-1):
-        sname = input[i+1].get("name")
-        sdesc = input[i+1].get("desc")
-        sip = input[i+1].get("ip")
+def embed_server_list(title, input):
+    embed = discord.Embed(title = "📄 "+title, color = discord.Color.dark_blue())
 
-        if (sname == None) or (sdesc == None) or (sip == None): continue
-
-        embed.add_field(name=f"{sname.title()}\n ``{sip}``", value=f'{sdesc}\n', inline=False)
-
+    for i in range(len(input)):
+        sname, sdesc, sip = input[i].get("name"), input[i].get("desc"), input[i].get("ip")
+        
+        if (sname is None) or (sdesc is None) or (sip is None): continue
+        embed.add_field(name=f"{sname.title()} | ``IP: {sip}``", value=f'{sdesc}\n', inline=False)
+    #TODO User requested/time
     return embed
-def embed_playtime(input):
-    pass
-# Playtime Table
-    # Total:
-        # Highest Playtime Server:
-        # 2nd
-        # 3rd
+
+def embed_playtime(total_playtime, dict_list):
+    """total playtime and sorted dict_list by playtime --> Sorted Embed"""
+    embed = discord.Embed(title="Playtime",description=total_playtime,timestame=datetime.utcnow(),color=discord.Color.dark_purple())
+
+    for dictionary in dict_list:
+        server_name = dictionary.get('servername')
+        last_con = dictionary.get('last_connected')
+        playtime = dictionary.get('playtime')
+        first_join = dictionary.get('first_join')
+
+        embed.add_field(name=f"{server_name} | Last Played: {last_con}", value=f"``{playtime}`` since ``{first_join}``", inline=False)
+    #TODO User requested/time
+    return embed
+
+def embed_build(message):
+    #TODO User requested/time
+    return discord.Embed(title=f"📄 {message}",color=discord.Color.blurple(),timestamp=datetime.utcnow())
 
 def embed_message(msg_dict):
-    """Returns a discord embed message object corresponding with a chat-link message"""
-    return discord.Embed(title=f"{get_type_icon(msg_dict.get('type'))} {msg_dict.get('username')} {msg_dict.get('message')}",timestame=msg_dict.get("time"), color = msg_dict.get("color"))
+    return discord.Embed(title=f"{get_type_icon(msg_dict.get('type'))} {msg_dict.get('username')} {msg_dict.get('message')}", color = msg_dict.get("color"))
     

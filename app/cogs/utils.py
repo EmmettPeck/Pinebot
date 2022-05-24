@@ -4,7 +4,7 @@ from discord.ext.commands import has_permissions, CheckFailure
 
 from database import DB
 from dockingPort import DockingPort
-from embedding import embed_server_list, embed_table
+from embedding import embed_server_list,embed_build
 
 class Utilities(commands.Cog):
 
@@ -53,7 +53,7 @@ class Utilities(commands.Cog):
         
         await ctx.message.delete()
         if response:
-            await ctx.send(response)
+            await ctx.send(embed=embed_build(response))
         else:
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
 

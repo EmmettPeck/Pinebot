@@ -10,6 +10,7 @@ from database import DB
 from username_to_uuid import UsernameToUUID
 from messages import MessageType
 from datetime import timedelta  
+from embedding import embed_build
 
 # =====================================================================================================================================================================
 class Analytics(commands.Cog):
@@ -310,12 +311,12 @@ class Analytics(commands.Cog):
         else: 
             single = self.handle_playtime(uuid_index, server.title())
             if single:
-                await ctx.send(f"{name} has played for `{self.td_format(single)}` on {server.title()}.")
+                await ctx.send(embed=embed_build(f"{name} has played for `{self.td_format(single)}` on {server.title()}."))
                 return
             elif single == timedelta():
-                await ctx.send(f"{name} hasn't played on {server.title()}.")
+                await ctx.send(embed=embed_build(f"{name} hasn't played on {server.title()}."))
             else:
-                await ctx.send(f"Server not found.")
+                await ctx.send(embed=embed_build(f"Server not found."))
     
 def setup(bot):
     bot.add_cog(Analytics(bot))
