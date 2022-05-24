@@ -237,7 +237,7 @@ class GameCog(commands.Cog):
         Handles connect queue, saving playerstats after modifications, adding modifications to playtime as appropriate
         """
         # Quick Return
-        #if server.connect_queue.qsize() == 0: return
+        if server.connect_queue.qsize() == 0: return
         save_list = [] # Logging indexes that need to be saved
 
         # Add Events
@@ -290,9 +290,8 @@ class GameCog(commands.Cog):
             
 
         # Save & Update Header
-        if save_list:
-            loop = asyncio.get_event_loop()
-            loop.create_task(self.header_update(server=server))
+        loop = asyncio.get_event_loop()
+        loop.create_task(self.header_update(server=server))
 
         for index in save_list:
             if index.get('uuid'): self.save_statistics(server=server, filename=index.get('uuid'),index=index.get('index'))

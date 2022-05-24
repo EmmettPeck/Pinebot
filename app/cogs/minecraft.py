@@ -190,7 +190,7 @@ class Minecraft(GameCog):
             if post and (not ignore):
                 if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
                     post["server"] = server.server_name
-                    server.message_queue.put(post)
+                    server.connect_queue.put(post)
                 server.message_queue.put(post)
 
 # Deaths--------------------------------------------------------------------------------------------------------------------------------------------
