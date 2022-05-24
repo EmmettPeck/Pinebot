@@ -28,28 +28,16 @@ class GameCog(commands.Cog):
         self.bot = bot
         self.servers = []
         
-        # For server in DB, check if matches game
+        # Adds containers based on gameversion to appropriate cog 
         for cont in DB.get_containers():
             if split_first(cont.get('version'),':')[0] == self.get_version():
-                server = Server(server=cont, 
-                bot=self.bot, 
-                cid=cont.get("channel_id"),
-                statistics=[],
-                online_players=[],
-                server_name=cont.get('name'),
-                docker_name=cont.get('docker_name'),
-                version=cont.get('version'),
-                fingerprint = FingerPrints(cont.get('docker_name')),
-                )
-                # Load Statistics & discordserver
-                server.statistics=self.load_statistics(server),
+                server = Server(server=cont, bot=self.bot, statistics=self.load_statistics(cont.get('docker_name')))
 
                 # Update Online List
                 pl = self.get_player_list(server)
                 server.online_players = pl if pl else []
 
                 self.servers.append(server)
-
         # Ensure fingerprinted messages before cog was online
         for server in self.servers:
             self.read(server, ignore=True)
@@ -124,14 +112,14 @@ class GameCog(commands.Cog):
                     s+=1
         return None
     # Local Statistics Save/Load/Create ---------------------------------------------------------------------------------------------------------------------------------------------------------
-    def load_statistics(self, server:Server) -> list:
+    def load_statistics(self, docker_name:str) -> list:
         """
         For each file in data/servers/{CogName}/{docker_name}, appends dict to list
         Returns list
         """
         stats = []
         try:
-            for path in os.listdir(f'data/servers/{__name__}/{server.docker_name}'):
+            for path in os.listdir(f'data/servers/{__name__}/{docker_name}'):
                 with open(path) as f:
                     stats.append(json.load(f))
         except FileNotFoundError:
