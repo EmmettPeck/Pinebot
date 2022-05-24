@@ -106,9 +106,9 @@ class MessageFilter:
         """Filters log by container version"""
 
         # Switch between versions
-        if version == "mc":
+        if split_first(version,':')[0] == "Minecraft":
             return self.filter_mc(in_str)
-        elif version == "factorio":
+        elif split_first(version,':')[0] == "Factorio":
             return self.filter_factorio(in_str)
     
     # Filters ------------------------------------------------------------------------------------------------
