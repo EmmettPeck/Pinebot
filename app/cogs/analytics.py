@@ -171,7 +171,7 @@ class Analytics(commands.Cog):
                 else:
                     return False
             else:
-                return True
+                return False
         except IndexError:
             if(len(joinList) > 0):
                 print(f"Fatal IndexError is_recentest_join: Server:{serverName}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.now()}")
