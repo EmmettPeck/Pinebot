@@ -59,7 +59,7 @@ def is_recentest_join(statistics:dict) -> bool:
             else:
                 return False
         else:
-            return True
+            return False
     except IndexError:
         if(len(joinList) > 0):
             print(f"EEE: Fatal IndexError is_recentest_join: Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
