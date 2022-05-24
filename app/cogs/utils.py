@@ -1,11 +1,10 @@
 """A cog for discord.py that carries an assortment of utility commands for Pineserver"""
-import discord
 from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
-import json
 
 from database import DB
 from dockingPort import DockingPort
+from embedding import embed_server_list,embed_build
 
 class Utilities(commands.Cog):
 
@@ -54,38 +53,19 @@ class Utilities(commands.Cog):
         
         await ctx.message.delete()
         if response:
-            await ctx.send(response)
+            await ctx.send(embed=embed_build(response))
         else:
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
 
     # ServerList --------------------------------------------------------------------------------------------------------------------------------------------------
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", brief="Lists all pineserver.net servers")
     async def server_list(self, ctx):
-        message = f"""``Server List``\n```Name    | IP                 | Description\n"""
-        for dict in DB.get_containers():
-            # Don't display hidden servers
-            if dict.get("hidden"):
-                continue
-            # Format Spacing
-            ni = len(dict.get("name"))
-            name_spacing = ""
-            while ni < 8:
-                name_spacing += " "
-                ni+=1
+        out_dict = ["Server List"]
+        for server in DB.get_containers():
+            if server.get("hidden") == False:
+                out_dict.append({'name':server.get('name'),'desc':server.get('description'),'ip':server.get('ip')})
 
-            pi = len(dict.get("ip"))
-            ip_spacing = ""
-            while pi < 19:
-                ip_spacing += " "
-                pi+=1
-
-            # Print Element
-            message += dict.get("name") + name_spacing + "| " + dict.get("ip") + ip_spacing + "| " + dict.get("description")+ "\n"
-
-        message +="```"
-        await ctx.message.delete()
-        await ctx.send(message)
-    # --------------------------------------------------------------------------------------------------------------------------------------------------
+        await ctx.send(embed=embed_server_list(out_dict))
 
 def setup(bot):
     bot.add_cog(Utilities(bot))

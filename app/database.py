@@ -35,7 +35,7 @@ class DB:
     
     def load_role_whitelist(self):
         # Load role_Whitelist.json
-        with open(r"data/role_Whitelist.json", 'r') as read_file:
+        with open(r"../data/role_Whitelist.json", 'r') as read_file:
             self.role_Whitelist = json.load(read_file)
 
     # Docker Containers ---------------------------------------------------------
@@ -44,11 +44,11 @@ class DB:
         return self.containers
         
     def load_containers(self): 
-        with open(r"data/containers.json", 'r') as read_file:
+        with open(r"../data/containers.json", 'r') as read_file:
             self.containers = json.load(read_file)
 
     def save_containers(self):
-        with open(r"data/containers.json", 'w') as write_file:
+        with open(r"../data/containers.json", 'w') as write_file:
             json.dump(self.containers, write_file, indent = 2)
 
     def add_container(self, sDict):
@@ -91,7 +91,7 @@ class DB:
     def load_playerstats(self):
         """Load playerstats from playerstats.json"""
         try:
-            with open("data/playerstats.json") as f:
+            with open("../data/playerstats.json") as f:
                 e = json.load(f)
         except FileNotFoundError:
             return None
@@ -100,32 +100,32 @@ class DB:
 
     def save_playerstats(self):
         """Saves playerstats to playerstats.json"""
-        with open("data/playerstats.json", 'w') as f:
+        with open("../data/playerstats.json", 'w') as f:
             json.dump(self.playerstats, f, indent = 2)
     
     def create_playerstats(self):
         """Creates empty playerstats.json structure""" 
         self.playerstats = [{'UUID':'','Servers':[]}]
         for server in self.containers:
-            add_server(server['name'])
+            self.add_server(server['name'])
         self.save_playerstats()
 
 # Server Add/Remove ------------------------------------------------------------------------------------------------------------------------------------------------
-def add_server(servername):
-    """Adds empty server stats to all players"""
-    server_list = []
-    # Lists all servers from first entry in DB
-    for item in DB.playerstats[0]["Servers"]:
-        server_list.extend(item.keys())
+    def add_server(self, servername):
+        """Adds empty server stats to all players"""
+        server_list = []
+        # Lists all servers from first entry in DB
+        for item in self.playerstats[0]["Servers"]:
+            server_list.extend(item.keys())
 
-    # Catch if server already exists
-    if servername in server_list:
-        print(f"ERROR: add_server {servername} already present.")
-        return False
+        # Catch if server already exists
+        if servername in server_list:
+            print(f"ERROR: add_server {servername} already present.")
+            return False
 
-    for player in DB.playerstats:
-        serv = {f'{servername}':{'Total Playtime':[],'Last Computed':[], 'Joins':[], 'Leaves':[]}}
-        player['Servers'].append(serv)
-    print(f"ADDED: added server {servername}")
-    DB.save_playerstats()
-    return True
+        for player in self.playerstats:
+            serv = {f'{servername}':{'Total Playtime':[],'Last Computed':[], 'Joins':[], 'Leaves':[]}}
+            player['Servers'].append(serv)
+        print(f"ADDED: added server {servername}")
+        self.save_playerstats()
+        return True
