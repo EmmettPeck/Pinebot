@@ -293,18 +293,18 @@ class Analytics(commands.Cog):
 
         # Name Catch
         if name == None:
-            await ctx.send("Please provide a playername, >playertime <name> <optional-server>")
+            await ctx.send(embed=embed_build("Please provide a playername, >playertime <name> <optional-server>"))
             return
 
         # Catch wrong names
         if uuid_index == None:
-            await ctx.send("Player name not recognized. Either misspelled or hasn't played on Pineserver.")
+            await ctx.send(embed=embed_build("Player name not recognized. Either misspelled or hasn't played on Pineserver."))
             return
 
         # Total
         if server == None:
             total = self.handle_playtime(uuid_index)
-            await ctx.send(f"{name} has played for `{self.td_format(total)}` across all servers.")
+            await ctx.send(embed=embed_build(f"{name} has played for `{self.td_format(total)}` across all servers."))
             return
 
         # Specific Server Playtime
