@@ -37,22 +37,20 @@ class Analytics(commands.Cog):
 
         # Total
         if server == None:
-            total = analytics_lib.handle_playtime(bot=self.bot, request_name=server.title(), who=name)
+            total = analytics_lib.handle_playtime(bot=self.bot, server_name=server, who=name)
             await ctx.send(embed = embed_build(f"{name} has played for `{analytics_lib.td_format(total)}` across all servers."))
             return
 
         # Specific Server Playtime
         else: 
-            single = analytics_lib.handle_playtime(bot=self.bot, request_name=server.title(), who=name)
+            single = analytics_lib.handle_playtime(bot=self.bot, server_name=server, who=name)
             if single:
-                await ctx.send(embed = embed_build(f"Player `{name}` has played for `{analytics_lib.td_format(single)}` on `{server.title()}`."))
+                await ctx.send(embed = embed_build(f"Player `{name}` has played for `{analytics_lib.td_format(single)}` on `{server}`."))
                 return
-            elif single == 2:
-                await ctx.send(embed = embed_build(f"Player name `{name}` found, server not found. Are you sure `{server.title()}` is a server?"))
-            elif single == 1:
-                await ctx.send(embed = embed_build(f"Player name `{name}` not found."))
+            if single == timedelta():
+                await ctx.send(embed = embed_build(f"Player & Server recognized, yet no tengo playtime on `{server}`."))
             else:
-                await ctx.send(embed = embed_build(f"Edge Case --- Not Implemented"))
+                await ctx.send(embed = embed_build(f"Either player or server not found. Are you sure `{server}` is a server and `{name}` has played on that server? [Case Sensitive, I know, I know]"))
 # ---------------------------------------------------------------------------------------------------
 
 def setup(bot):

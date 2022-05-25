@@ -16,12 +16,7 @@ import analytics_lib
 
 class GameCog(commands.Cog):
     """
-    GameCog - A discord.py cog w/ ChatLink & Playtime logging for docker games
-    
-    For A Game Specific Cog, Implement:
-    - Send
-    - Filter
-    - get_player_list
+    GameCog - A discord.py cog w/ ChatLink & Playtime logging for docker games Overload functions as needed.
     """
 
     def __init__(self, bot):
@@ -57,26 +52,77 @@ class GameCog(commands.Cog):
 
     def get_version(self) -> str:
         """
-        The Version Of The GameCog To Be Overloaded
+        The Version Of The GameCog ie: "Minecraft", "Factorio" -- To Be Overloaded
         """
         return None
 
-    def find_server(self, cid:int) -> Server:
+    def set_statistics(self, statistics:dict, server_name:str, uuid:str=None, playername:str=None, request:str=None):
+        """Sets an instance of statistics from server"""
+        try:
+            serv = self.find_server(server_name=server_name)
+            if serv == None: return
+
+            if uuid:
+                self.servers[serv].statistics[self.find_player(uuid=uuid)] = statistics
+            elif playername:
+                self.servers[serv].statistics[self.find_player(username=playername)] = statistics
+            elif request:
+                find1, find2 = self.find_player(server=self.servers[serv],uuid=request), self.find_player(self.servers[serv],username=request)
+                if find1:
+                    self.servers[serv].statistics[find1] = statistics
+                elif find2:
+                    self.servers[serv].statistics[find2] = statistics
+            else:
+                raise NotImplementedError('set_statistics called with no paramenters ya dummy')
+        except:
+            return
+
+    def get_statistics(self, server_name:str, uuid:str=None, playername:str=None, request:str=None):
+        """Gets current instance of statistics from server"""
+        try:
+            serv = self.find_server(server_name=server_name)
+            if serv == None: return
+
+            if uuid:
+                return self.servers[serv].statistics[self.find_player(uuid=uuid)]
+            elif playername:
+                return self.servers[serv].statistics[self.find_player(username=playername)]
+            elif request:
+                find1, find2 = self.find_player(self.servers[serv], uuid=request), self.find_player(self.servers[serv], username=request)
+                ret_val = self.servers[serv].statistics[find1] if find1 else self.servers[serv].statistics[find2]
+                return ret_val
+            else:
+                print('get_statistics called with no paramenters')
+                return None
+        except:
+            return None
+
+    # Find Functions ----------------------------------------------------------------
+    def find_server(self, cid:int=None, server_name=None) -> Server:
         """
         Returns the server object with a matching cid, otherwise returns None
         """
-        i = 0
-        for server in self.servers:
-            if server.cid == cid: return i
-            i+=1
-        return None
+        if cid:
+            i = 0
+            for server in self.servers:
+                if server.cid == cid: return i
+                i+=1
+            return None
+        elif server_name:
+            i = 0
+            for server in self.servers:
+                if server.name == server_name: return i
+                i+=1
+            return None
+        else:
+            print('find_server called with no paramenters')
+            return None
 
-    def find_player(self, username:str, server:Server=None, uuid=None) -> tuple:
-        """
+    def find_player(self, username:str, server:Server=None, uuid=None) -> int:
+        """ TODO Make this shorter, this nested if sucks buttooty
         Finds player statistics object, returns index of it. Accounts for UUIDs
         Returns [serverIndex, statisticsIndex] with no server, otherwise returns statisticsIndex
         """
-        s = 0
         i = 0
         if not uuid:
             uuid = self.get_uuid(username=username)
@@ -85,13 +131,11 @@ class GameCog(commands.Cog):
                 if uuid:
                     for stat in server.statistics:
                             if stat['uuid'] == uuid:
-                                print("Got user with server and uuid")
                                 return i
                             i+=1
                 else:
                     for stat in server.statistics:
                             if stat['user'] == username:
-                                print("Got user with server and no uuid")
                                 return i
                             i+=1
             else:
@@ -99,18 +143,14 @@ class GameCog(commands.Cog):
                     for server in self.servers:
                         for stat in server.statistics:
                             if stat['uuid'] == uuid:
-                                print("Got user without server and uuid")
-                                return s, i
+                                return i
                             i+=1
-                        s+=1
                 else:
                     for server in self.servers:
                         for stat in server.statistics:
                             if stat['user'] == username:
-                                print("Got user without server and no uuid")
-                                return s, i
+                                return i
                             i+=1
-                        s+=1
         except:
             return None
 
@@ -123,17 +163,18 @@ class GameCog(commands.Cog):
         stats = []
         try:
             # Ensure directory existance
-            path = f'../../data/servers/{cog_name}/{server_name}'
+            path = f'../../data/servers/{cog_name}/{server_name}/'
             if not os.path.exists(path):
                 os.makedirs(path)
 
             # For file in folder
-            for item in os.listdir(f'../../data/servers/{cog_name}/{server_name}'):
-                with open(item) as f:
+            for item in os.listdir(path):
+                print(f"    -Filesystem- load_item: {item}")
+                with open(path+item) as f:
                     stats.append(json.load(f))
         except FileNotFoundError:
             print(f"{server_name}.{__name__} Error: No files found for load_statistics")
-            return []
+            return stats
         else:
             return stats
         
@@ -161,7 +202,7 @@ class GameCog(commands.Cog):
 
         # Add to stats (Need to affect self.)
         try:
-            self.servers[self.find_server(server.cid)].statistics.append(dict)
+            self.servers[self.find_server(server_name=server.name)].statistics.append(dict)
         except:
             raise NotImplemented("Create Statistics: Server Not Present")
 
@@ -170,12 +211,9 @@ class GameCog(commands.Cog):
         Saves file from server statistics dict w/ filename
         ''' 
         try:
-            if index:
-                with open(f'../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json', 'w') as f:
+            with open(f'../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json', 'w') as f:
                      json.dump(server.statistics[index], f, indent = 2)
-            else:
-                with open(f'../../data/servers/{server.cog_name}/{server.server_name}/{filename}.json', 'w') as f:
-                    json.dump(self.servers[self.find_server(server.cid)], f, indent = 2)
+                     print(f"    -Filesystem- Successfully Saved {server.cog_name}/{server.server_name}/{filename}.json")
         except FileNotFoundError:
             raise NotImplementedError(f"{server.server_name}.{server.cog_name} Error: {filename} does not exist in current filestructure")
         except:
@@ -279,9 +317,13 @@ class GameCog(commands.Cog):
                     self.create_statistics(server=server,username=user, uuid=uuid)
                 else:
                     self.create_statistics(server=server,username=user)
+                player_index = self.find_player(username=user,server=server, uuid=uuid)
+                if player_index == None:
+                    raise NotImplemented("Player not being created in create_statistics or appended to statistics.")
             
             # Add Connect Events w/ fixing logic
             recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics[player_index])
+            print(f"Jointype: {join}, Recentest is join: {recentest_is_join}")
             try:
                 if join == True:
                     # If Adding Join, most recent entry is a join, remove previous join
@@ -372,7 +414,7 @@ class GameCog(commands.Cog):
         """
         ctx = self.bot.get_channel(server.cid)
         await ctx.edit(topic=f"{server.server_name}.{server.cog_name} | {len(server.online_players)}/{server.player_max if server.player_max > -1 else 'ꝏ'} | Status: {container_status}")
-        print(f"{server.server_name}.{server.cog_name}: Header Updated")
+        print(f"   -Header- {server.server_name}.{server.cog_name}: Header Updated")
     
     def get_player_list(self, server:dict=None) -> list:
         """

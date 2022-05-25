@@ -36,13 +36,13 @@ def td_format(td_object):
 
 def get_connect_dt_list(statistics:dict) -> tuple:
     """Returns tuple(joinList, leaveList) for statistics entry"""
-    joinList = leaveList = []
+    joinList = []
+    leaveList = []
 
     for join in statistics["joins"]:
         joinList.append(str_to_dt(join))
     for leave in statistics["leaves"]:
         leaveList.append(str_to_dt(leave))
-    
     return joinList, leaveList
 
 # Connect Event -----------------------------------------------------------------------------------------------------------------------------------------------
@@ -51,7 +51,6 @@ def is_recentest_join(statistics:dict) -> bool:
     Returns true if Join is most recent connect event
     """
     joinList, leaveList = get_connect_dt_list(statistics=statistics)
-
     try:
         if(len(leaveList) > 0):
             if(joinList[-1] > leaveList[-1]):
@@ -63,10 +62,10 @@ def is_recentest_join(statistics:dict) -> bool:
     except IndexError:
         if(len(joinList) > 0):
             print(f"EEE: Fatal IndexError is_recentest_join: Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
-        return None
+        return False
 
-# Playtime ------------------------------------------------------------------------------------------
-def calculate_playtime(statistics:dict) -> datetime:
+# Playtime -----------------------------------------------------------------------------------------------------------------------------------------------
+def calculate_playtime(bot, statistics:dict, server_name:str, player_name:str) -> datetime:
     """
     Intelligently calculates playtime of a server for a player.
     Usage: calculate_playtime(server.statistics) -> playtime
@@ -78,10 +77,11 @@ def calculate_playtime(statistics:dict) -> datetime:
     if (c_index <= len(statistics.get('leaveList'))) and (len(statistics.get('leaveList')) == len(statistics.get('leaveList'))): return total
     leaveList, joinList = get_connect_dt_list(statistics=statistics)
     
-    # TODO Fixing logic (if joins < leaves, fix)
+    try: # Fixing: If first leave before first join
+        if leaveList[0] < joinList[0]:
+            statistics['leaves'].pop()
 
     # Main calculate if there is a leave
-    try: 
         if len(leaveList) > 0:
             for index in range(start=c_index,stop=len(leaveList)):
                 total += (leaveList[index] - joinList[index])
@@ -91,6 +91,10 @@ def calculate_playtime(statistics:dict) -> datetime:
     
     # Set Statistics
     statistics['total_playtime'] = str(total)
+    statistics['calculated_index'] = c_index
+    for cog in DB.get_game_cogs():
+        current = bot.get_cog(cog)
+        current.set_statistics(statistics=statistics, server_name=server_name,request=player_name)
 
     # If there's 1 more join than leaves
     if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
@@ -98,7 +102,8 @@ def calculate_playtime(statistics:dict) -> datetime:
         return total + now - joinList[index+1] # Temporary increment (Doesn't set total, but does return different time)
     return total 
 
-def handle_playtime(bot, who:str,request_name:str='total'):
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------
+def handle_playtime(bot, who:str, server_name:str='total'):
     """
     Gathers playtime for applicable servers
     Gathers total playtime if requested
@@ -106,21 +111,18 @@ def handle_playtime(bot, who:str,request_name:str='total'):
     Gathers cogs intelligently
     """   
 
-    if request_name.title() == "Total":
+    if server_name.title() == "Total":
         print("EEE: handle_playtime(request_name='total'): Not Implemented.")
+        return None
     else:
         # Look for servername among docker_names and server_names
         for cog in DB.get_game_cogs():
             current = bot.get_cog(cog)
-            # Find Player
-            server_index, stats_index = current.find_player(username=who)
-
-            # Catch
-            if stats_index == None:
-                return 1 # Condition for player not found
+            print(cog, current)
+            if current == None: continue
+            stats = current.get_statistics(server_name=server_name, request=who)
 
             # Ensure servername
-            if (current.servers[server_index].server_name.title() == request_name) or (current.servers[server_index].docker_name.title() == request_name):
-                return calculate_playtime(statistics=current.servers[server_index].statistics[stats_index])
-            else:
-                return 2 # Condition for player found, server != requestname
+            if stats:
+                return calculate_playtime(bot=bot,statistics=stats, server_name=server_name, player_name=who)
+        return None
