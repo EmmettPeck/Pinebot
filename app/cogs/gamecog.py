@@ -2,7 +2,6 @@ import asyncio
 from datetime import datetime
 import json
 import os
-from typing import Type
 from discord.ext import tasks, commands
 import discord
 
@@ -29,7 +28,7 @@ class GameCog(commands.Cog):
             if cog_name == self.get_version():
                 server = Server(server=cont, bot=self.bot, statistics=self.load_statistics(cog_name=cog_name,server_name=cont.get('name')),cog_name=cog_name)
 
-                # Update Online List
+                # Update Online List TODO: Check if online players most recent is join, if not, add a join at discovery time. 
                 pl = self.get_player_list(server)
                 server.online_players = pl if pl else []
                 self.servers.append(server)
@@ -79,23 +78,31 @@ class GameCog(commands.Cog):
 
     def get_statistics(self, server_name:str, uuid:str=None, playername:str=None, request:str=None):
         """Gets current instance of statistics from server"""
-        try:
-            serv = self.find_server(server_name=server_name)
-            if serv == None: return
+        serv = self.find_server(server_name=server_name)
+        if serv == None: return
 
-            if uuid:
-                return self.servers[serv].statistics[self.find_player(uuid=uuid)]
-            elif playername:
-                return self.servers[serv].statistics[self.find_player(username=playername)]
-            elif request:
-                find1, find2 = self.find_player(self.servers[serv], uuid=request), self.find_player(self.servers[serv], username=request)
-                ret_val = self.servers[serv].statistics[find1] if find1 else self.servers[serv].statistics[find2]
-                return ret_val
-            else:
-                print('get_statistics called with no paramenters')
+        if uuid:
+            return self.servers[serv].statistics[self.find_player(uuid=uuid)]
+        elif playername:
+            return self.servers[serv].statistics[self.find_player(username=playername)]
+        elif request:
+            find1, find2 = self.find_player(server=self.servers[serv], uuid=request), self.find_player(server=self.servers[serv], username=request)
+            try:
+                if not find1 == None:
+                    ret_val = self.servers[serv].statistics[find1]
+                elif not find2 == None: 
+                    ret_val = self.servers[serv].statistics[find2]
+                else:
+                    return None
+            except IndexError:
+                print('Index Error in get_statistics:', find1, find2)
                 return None
-        except:
+            print(ret_val)
+            return ret_val
+        else:
+            print('get_statistics called with no paramenters')
             return None
+
 
     # Find Functions ----------------------------------------------------------------
     def find_server(self, cid:int=None, server_name=None) -> Server:
@@ -111,14 +118,14 @@ class GameCog(commands.Cog):
         elif server_name:
             i = 0
             for server in self.servers:
-                if server.name == server_name: return i
+                if server.server_name == server_name: return i
                 i+=1
             return None
         else:
             print('find_server called with no paramenters')
             return None
 
-    def find_player(self, username:str, server:Server=None, uuid=None) -> int:
+    def find_player(self, username:str=None, server:Server=None, uuid=None) -> int:
         """ TODO Make this shorter, this nested if sucks buttooty
         Finds player statistics object, returns index of it. Accounts for UUIDs
         Returns [serverIndex, statisticsIndex] with no server, otherwise returns statisticsIndex
@@ -191,7 +198,7 @@ class GameCog(commands.Cog):
         }
         """
         # Build Dict
-        dict = {'username':'','uuid':'','total_playtime':'', 'calculated_index':0, 'joins':[], 'leaves':[]}
+        dict = {'username':'','uuid':'','total_playtime':'', 'calculated_index':-1, 'joins':[], 'leaves':[]}
         if username: dict['username']= filename = username
         if uuid: dict['uuid']= filename = uuid
         
@@ -202,7 +209,7 @@ class GameCog(commands.Cog):
 
         # Add to stats (Need to affect self.)
         try:
-            self.servers[self.find_server(server_name=server.name)].statistics.append(dict)
+            self.servers[self.find_server(server_name=server.server_name)].statistics.append(dict)
         except:
             raise NotImplemented("Create Statistics: Server Not Present")
 

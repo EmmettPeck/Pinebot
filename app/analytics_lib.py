@@ -5,14 +5,16 @@ By: Emmett Peck
 A group of handling datetime & connection logging, playtime calculating functions.
 """
 from datetime import datetime, timedelta
-from http import server
 from database import DB
-from server import Server
 
 # DateTime Stuff ------------------------------------------------------------------------------------------------
 def str_to_dt(dt_str):
     """Converts string to datetime format"""
-    return datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')    
+    return datetime.strptime(dt_str, '%Y-%m-%d %H:%M:%S.%f')
+
+def str_to_timedelta(dt_str, first_join:datetime):
+    """Converts datetime to string format"""
+    return str_to_dt(dt_str) - first_join
 
 def td_format(td_object):
     seconds = int(td_object.total_seconds())
@@ -57,49 +59,68 @@ def is_recentest_join(statistics:dict) -> bool:
                 return True
             else:
                 return False
-        else:
+        # First Leave Catch
+        elif (len(joinList) == 1) and (len(leaveList) == 0):
+            return True
+        # First Join Catch
+        elif(len(joinList) == 0) and (len(leaveList) == 0):
             return False
+        else:
+            raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
     except IndexError:
-        if(len(joinList) > 0):
-            print(f"EEE: Fatal IndexError is_recentest_join: Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
-        return False
+        raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
 
 # Playtime -----------------------------------------------------------------------------------------------------------------------------------------------
-def calculate_playtime(bot, statistics:dict, server_name:str, player_name:str) -> datetime:
+def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -> datetime:
     """
     Intelligently calculates playtime of a server for a player.
     Usage: calculate_playtime(server.statistics) -> playtime
+
+    Increments total, calculating only new pairs and current online status. 
+    Total stored as firstjoin+totalplaytime. On load converted to timedelta.
     """
-    total = str_to_dt(statistics.get('total_playtime'))
     c_index = statistics.get('calculated_index')
-    
     # If calculated_index is less than leaves total_index, and joins == leaves return total
-    if (c_index <= len(statistics.get('leaveList'))) and (len(statistics.get('leaveList')) == len(statistics.get('leaveList'))): return total
-    leaveList, joinList = get_connect_dt_list(statistics=statistics)
-    
-    try: # Fixing: If first leave before first join
+    try:
+        if (c_index <= len(statistics.get('leaveList'))) and (len(statistics.get('leaveList')) == len(statistics.get('leaveList'))): return total
+    except TypeError: pass # Catch for TypeError: object of type 'NoneType' has no len()
+
+    # Ensure joinList exists, use firstJoin to load/save total
+    joinList, leaveList = get_connect_dt_list(statistics=statistics)
+    if len(joinList) == 0: return None
+    if statistics.get('total_playtime') == '':
+        total = timedelta()
+    else:
+        total = str_to_timedelta(statistics.get('total_playtime'), joinList[0])
+
+    # Fixing: If first leave before first join
+    try:
         if leaveList[0] < joinList[0]:
             statistics['leaves'].pop()
+    except IndexError: pass #print(f"Index Error in Calculate Playtime: {__name__}:{statistics} with {len(joinList)} joins and {len(leaveList)} leaves at {c_index} index.")
 
     # Main calculate if there is a leave
+    try:
         if len(leaveList) > 0:
-            for index in range(start=c_index,stop=len(leaveList)):
+            for index in range(c_index+1,len(leaveList)):
                 total += (leaveList[index] - joinList[index])
                 c_index+=1
-    except IndexError:
-        print(f"Index Error in Calculate Playtime: {__name__}:{statistics} with {len(joinList)} joins and {len(leaveList)} leaves at {c_index} index.")
+    except TypeError: pass
     
     # Set Statistics
-    statistics['total_playtime'] = str(total)
+    statistics['total_playtime'] = str(total+joinList[0])
     statistics['calculated_index'] = c_index
-    for cog in DB.get_game_cogs():
-        current = bot.get_cog(cog)
-        current.set_statistics(statistics=statistics, server_name=server_name,request=player_name)
+    cog.set_statistics(statistics=statistics, server_name=server_name,request=player_name)
+    # TODO cog.save_statistics()
 
-    # If there's 1 more join than leaves
-    if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
-        now = datetime.utcnow()
-        return total + now - joinList[index+1] # Temporary increment (Doesn't set total, but does return different time)
+    # Playtime for online players -- If there's 1 more join than leaves
+    try:
+        if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
+            now = datetime.utcnow()
+            return total + now - joinList[c_index+1]
+    except TypeError: # Catch 'NoneType'
+        pass
+
     return total 
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -117,12 +138,12 @@ def handle_playtime(bot, who:str, server_name:str='total'):
     else:
         # Look for servername among docker_names and server_names
         for cog in DB.get_game_cogs():
-            current = bot.get_cog(cog)
-            print(cog, current)
+            current = bot.get_cog(cog.split('.',1)[1].title())
             if current == None: continue
             stats = current.get_statistics(server_name=server_name, request=who)
 
             # Ensure servername
             if stats:
-                return calculate_playtime(bot=bot,statistics=stats, server_name=server_name, player_name=who)
+                cal = calculate_playtime(statistics=stats, server_name=server_name, player_name=who,cog=current)
+                return cal
         return None

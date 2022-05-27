@@ -1,5 +1,4 @@
 import json
-import queue
 
 import docker
 
@@ -17,7 +16,7 @@ class DB:
         self.client = docker.from_env()
 
         # Timing ------------------------------------------------
-        self.chat_link_time = 1
+        self.chat_link_time = 2
         self.tail_len = 10
 
     # Timing -------------------------------------------------------------------
