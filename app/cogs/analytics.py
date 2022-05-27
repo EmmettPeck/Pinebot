@@ -1,57 +1,114 @@
 """
-analytics.py
+Discord cog to handle accessing of server playtime information.
 
-By: Emmett Peck
-A discord cog to interface with playtime calculation.
+This module holds commands used by users to interface with information gathered
+by pinebot. Calls methods and provides conditions for multiple input conditions.
+
+Authors: Emmett Peck (EmmettPeck)
+Version: May 27th, 2022
 """
 
 from datetime import timedelta
 
+from discord.ext import commands
+
 import analytics_lib
-from database import DB
-from discord.ext import commands, tasks
 from embedding import embed_build
-from messages import MessageType
 
 
-# =====================================================================================================================================================================
 class Analytics(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
     
-# ---------------------------------------------------------------------------------------------------
+    @commands.command(
+        name='playtime', 
+        help='''Returns playtime on pineservers. 
+            >playtime <player-name> <server-name>, 
+            otherwise returns total of player.''',
+        brief='Get total playtime.')
+    async def playtime(self, ctx, name:str=None, server:str=None):
+        """
+        Prints playtime information to channel
         
-# Commands ------------------------------------------------------------------------------------------
-    @commands.command(name='playtime',help='Returns playtime on pineservers. >playtime <player-name> <server-name>, otherwise returns total of player.',brief='Get total playtime.')
-    async def playtime(self, ctx, name=None, server=None):
+        Gets playtime for requesting user if no args provided, 
+        otherwise gathers playtime for other user. If server is provided,
+        Gathers playtime of username or matching UUID in that server.
 
-        # Name Catch
+        Parameter ctx: discord channel used by discord.py
+        Preconditon: ctx is a discord channel
+
+        Parameter name: Username to search for in server if provided, 
+        otherwise looks for discord user w/ linked accounts.
+        Precondition: name is a str
+
+        Parameter server: Server to get playtime from.
+        Precondition: server is an str
+        """
+
+        # If name not provided, prompt user and return.
         if name == None:
-            await ctx.send("Please provide a playername, >playertime <name> <optional-server>")
+            await ctx.send(
+                """Please provide a playername, 
+                >playertime <name> <optional-server>""")
             return
 
+        # If server not provided, prompt user and return.
         if server == None:
-            await ctx.send("Please provide a server, >playertime <name> <optional-server>")
+            await ctx.send(
+                """Please provide a server, 
+                >playertime <name> <optional-server>""")
             return
 
-        # Total
+        # TODO If server not provided, print total w/ list of top servers
         if server == None:
-            total = analytics_lib.handle_playtime(bot=self.bot, server_name=server, who=name)
-            await ctx.send(embed = embed_build(f"{name} has played for `{analytics_lib.td_format(total)}` across all servers."))
+            total = analytics_lib.handle_playtime(
+                bot=self.bot,
+                server_name=server, 
+                who=name)
+            await ctx.send(embed = embed_build(
+                f"""{name} has played for `{analytics_lib.td_format(total)}` 
+                across all servers."""))
             return
 
-        # Specific Server Playtime
+        # Look for server. found? print total: prompt user of input error. -----
         else: 
-            single = analytics_lib.handle_playtime(bot=self.bot, server_name=server, who=name)
+            # Get Playtime From Server
+            single = analytics_lib.handle_playtime(
+                bot=self.bot, 
+                who=name,
+                server_name=server)
+
+            # Print Playtime
             if single:
-                await ctx.send(embed = embed_build(f"Player `{name}` has played for `{analytics_lib.td_format(single)}` on `{server}`."))
+                await ctx.send(
+                    embed = embed_build(
+                        f"""Player `{name}` has played for 
+                        `{analytics_lib.td_format(single)}` on `{server}`."""))
                 return
+
+            # If Playtime present, but empty, prompt user
             if single == timedelta():
-                await ctx.send(embed = embed_build(f"Player & Server recognized, yet no tengo playtime on `{server}`."))
+                await ctx.send(
+                    embed = embed_build(
+                        f"""Player & Server recognized, yet no tengo playtime 
+                        on `{server}`."""))
+
+            # If None
+            elif single == None:
+                await ctx.send(
+                    embed = embed_build(
+                        f"""Either player or server not found. Are you sure 
+                        `{server}` is a server and `{name}` has played on that 
+                        server? [Case Sensitive, I know, I know]"""))
+
+            # For other false evaluating conditons, notify developer.
             else:
-                await ctx.send(embed = embed_build(f"Either player or server not found. Are you sure `{server}` is a server and `{name}` has played on that server? [Case Sensitive, I know, I know]"))
-# ---------------------------------------------------------------------------------------------------
+                raise NotImplementedError(f"single == {single}")
+
 
 def setup(bot):
+    """
+    Setup conditon for discord.py cog
+    """
     bot.add_cog(Analytics(bot))
