@@ -21,9 +21,9 @@ class Utilities(commands.Cog):
         out_dict = []
         for server in DB.get_containers():
             if server.get("hidden") == False:
-                out_dict.append({'name':server.get('name'),'desc':server.get('description'),'ip':server.get('ip')})
+                out_dict.append({'name':server.get('name'),'desc':server.get('description'),'ip':server.get('ip'),'version':server.get('version')})
 
-        await ctx.send(embed=embed_server_list("Server List",out_dict))
+        await ctx.send(embed=embed_server_list(reference=ctx.author,input=out_dict))
 
 def setup(bot):
     bot.add_cog(Utilities(bot))

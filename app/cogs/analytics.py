@@ -13,7 +13,7 @@ from datetime import timedelta
 from discord.ext import commands
 
 import analytics_lib
-from embedding import embed_build
+from embedding import embed_build, embed_playtime
 
 
 class Analytics(commands.Cog):
@@ -49,15 +49,15 @@ class Analytics(commands.Cog):
         # If name not provided, prompt user and return.
         if name == None:
             await ctx.send(
-                """Please provide a playername, 
-                >playertime <name> <optional-server>""")
+                "Please provide a playername,"
+                " >playertime <name> <optional-server>")
             return
 
         # If server not provided, prompt user and return.
         if server == None:
             await ctx.send(
-                """Please provide a server, 
-                >playertime <name> <optional-server>""")
+                "Please provide a server, "
+                ">playertime <name> <optional-server>")
             return
 
         # TODO If server not provided, print total w/ list of top servers
@@ -66,9 +66,12 @@ class Analytics(commands.Cog):
                 bot=self.bot,
                 server_name=server, 
                 who=name)
-            await ctx.send(embed = embed_build(
-                f"""{name} has played for `{analytics_lib.td_format(total)}` 
-                across all servers."""))
+            await ctx.send(
+                embed = embed_build(
+                reference=ctx.author,
+                message=
+                    f"{name} has played for `{analytics_lib.td_format(total)}` "
+                    "across all servers."))
             return
 
         # Look for server. found? print total: prompt user of input error. -----
@@ -82,25 +85,31 @@ class Analytics(commands.Cog):
             # Print Playtime
             if single:
                 await ctx.send(
-                    embed = embed_build(
-                        f"""Player `{name}` has played for 
-                        `{analytics_lib.td_format(single)}` on `{server}`."""))
+                    embed = embed_playtime(
+                        reference=ctx.author, 
+                        username=name,
+                        total_playtime=single.get('playtime'), 
+                        dict_list=[single]))
                 return
 
             # If Playtime present, but empty, prompt user
             if single == timedelta():
                 await ctx.send(
                     embed = embed_build(
-                        f"""Player & Server recognized, yet no tengo playtime 
-                        on `{server}`."""))
+                        reference=ctx.author,
+                        message=
+                        "Player & Server recognized, yet no tengo playtime on `"
+                        f"{server}`."))
 
             # If None
             elif single == None:
                 await ctx.send(
                     embed = embed_build(
-                        f"""Either player or server not found. Are you sure 
-                        `{server}` is a server and `{name}` has played on that 
-                        server? [Case Sensitive, I know, I know]"""))
+                        reference=ctx.author,
+                        message=
+                        f"Either player or server not found. Are you sure `"
+                        f"{server}` is a server and `{name}` has played on that" 
+                        "server? [Case Sensitive, I know, I know]"))
 
             # For other false evaluating conditons, notify developer.
             else:

@@ -79,6 +79,7 @@ def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -
     Increments total, calculating only new pairs and current online status. 
     Total stored as firstjoin+totalplaytime. On load converted to timedelta.
     """
+
     c_index = statistics.get('calculated_index')
     # If calculated_index is less than leaves total_index, and joins == leaves return total
     try:
@@ -87,6 +88,7 @@ def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -
 
     # Ensure joinList exists, use firstJoin to load/save total
     joinList, leaveList = get_connect_dt_list(statistics=statistics)
+    to_return = {'servername': server_name,'last_connected': leaveList[-1],'playtime': None,'first_join':joinList[0]}
     if len(joinList) == 0: return None
     if statistics.get('total_playtime') == '':
         total = timedelta()
@@ -117,12 +119,11 @@ def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -
     try:
         if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
             now = datetime.utcnow()
-            return total + now - joinList[c_index+1]
+            to_return['playtime'] = total + now - joinList[c_index+1]
     except TypeError: # Catch 'NoneType'
         pass
-
-    return total 
-
+    to_return['playtime'] = total 
+    return to_return
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------
 def handle_playtime(bot, who:str, server_name:str='total'):
     """
@@ -144,6 +145,7 @@ def handle_playtime(bot, who:str, server_name:str='total'):
 
             # Ensure servername
             if stats:
-                cal = calculate_playtime(statistics=stats, server_name=server_name, player_name=who,cog=current)
-                return cal
+                return calculate_playtime(statistics=stats, server_name=server_name, player_name=who,cog=current)
         return None
+
+         

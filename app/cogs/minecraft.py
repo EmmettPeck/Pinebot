@@ -37,16 +37,16 @@ class Minecraft(GameCog):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
 
     # Send --------------------------------------------------------------------------------------------------------------------------------------------------
-    @commands.command(name='send', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
+    @commands.command(name='sendcmd', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
     @has_permissions(administrator=True)
-    async def send(self, ctx, *, mess):
+    async def sendcmd(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
         response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command=mess, logging=True)
         if response:
             await ctx.send(response)
         else:
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
-    @send.error
+    @sendcmd.error
     async def send_error(self, error, ctx):
         if isinstance(error, CheckFailure):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
@@ -95,12 +95,12 @@ class Minecraft(GameCog):
             print(f' --- {resp_str}')
         return resp_str
 
-    def send_message(self, server:Server, formatted_msg:str):
+    def send_message(self, server:Server, message:str):
         '''
         OVERLOAD: MC
         Sends discord blue message to MC chat
         '''
-        self.send(server=server,command=f'tellraw @a {{"text":"{formatted_msg}","color":"#7289da"}}')
+        self.send(server=server,command=f'tellraw @a {{"text":"{message}","color":"#7289da"}}')
 
     def get_player_list(self, server:Server) -> list:
         """ OVERLOAD: MC
