@@ -61,7 +61,9 @@ class GameCog(commands.Cog):
 
                 # Update Online List 
                     # TODO: Check if online players most recent is join, 
-                    # if not, add a join at discovery time. 
+                    # if not, add a join at discovery time. Also would need to
+                    # include addplayer for unrecognized players
+                        # TODO break out addplayer function
                 pl = self.get_player_list(server)
                 server.online_players = pl if pl else []
                 self.servers.append(server)
@@ -82,7 +84,7 @@ class GameCog(commands.Cog):
     def cog_unload(self):
         self.pass_message.cancel()
 
-    # --------------------------------------------------------------------------
+    # To Be Overloaded: --------------------------------------------------------
 
     def get_version(self) -> str:
         """
@@ -93,6 +95,147 @@ class GameCog(commands.Cog):
         """
         return None
 
+    def get_uuid(self, username:str) -> str:
+        """
+        Returns: UUID of username if present, otherwise returns none.
+        
+        To be overloaded by GameCog children.     
+        """
+        return None
+
+    def get_player_list(self, server:Server=None) -> list:
+        """
+        Does nothing. To be overloaded by GameCog children.
+
+        For versions without a getlist function, returns None
+        Called on cog init for each server
+
+        Parameter server: Server object to reference
+        Precondition: server is a Server dataclass object
+        """
+
+        pass
+
+    def is_player_online(self, server:Server, playername:str = None) -> bool:
+        """
+        Returns: True if playername matches element in online_player list
+
+        To be overloaded by GameCog children.
+        Not certain, as not all games get online players on launch
+
+        Parameter server: Server to search for players in
+
+        Parameter playername: player to search for in online_players
+        """
+        if playername:
+            for player in server.online_players:
+                if playername == player: return True
+            return False
+        else:   
+            raise NotImplementedError(
+                "is_player_online: Called without True playername.")
+                
+    def send_message(self, server:Server, message:str):
+        """
+        Does nothing. To be overloaded by GameCog children.
+
+        Interface for Discord->Server Chatlink messaging.
+        Sends Message To gameserver based on version implementation:
+         - If no consolebased say command, does nothing.
+
+        Parameter server: Server object to reference
+        Precondition: server is a Server dataclass object
+
+        Parameter message: The message to send to server.
+        """
+
+        print(f"EEE - {message} GameCog send_message not implemented.")
+
+    def discord_message_format(self, server:Server, message:str) -> str:
+        """
+        Formats message based on version and logs to console.
+        - Default "<User> Message"
+
+        Parameter server: Server object to reference
+        Precondition: server is a Server dataclass object
+
+        Parameter message: message to format. 
+        """
+
+        item = f"<{message.author.name}> {message.content}"
+        print(f" {server.server_name}.{server.cog_name}: {item}")
+        return item
+
+    def filter(self, server:Server, message:str, ignore:bool):
+        """
+        Filters logs using versionbased conditions by type and content. 
+        Adds leaves/joins to connectqueue and messages to message queue.
+        
+        To be overloaded by GameCog Children
+
+        Parameter server: server to store fingerprints in
+        Precondition: server is a Server dataclass object
+
+        Parameter message: string to filter using conditions
+
+        Parameter ignore: Bool whether or not to put events to queues
+        """
+        # Fingerprints message, only uniques get sent
+        if not server.fingerprint.is_unique_fingerprint(message): return
+
+        # Filter message into a dictionary
+        dict = get_msg_dict(username="__default__",
+            message=message,
+            MessageType=MessageType.MSG,
+            color=discord.Color.blue())
+
+        # If Not Ignore, Messages are sent and accounted for playtime
+        if dict and (not ignore):
+            mtype =dict.get('type')
+            if mtype == MessageType.JOIN or mtype == MessageType.LEAVE:
+                dict["server"] = server.server_name
+                server.connect_queue.put(dict)
+            server.message_queue.put(dict)
+            
+#---------------------------- Headers ------------------------------------------
+    async def header_update(self,server:Server):
+        """
+        Updates header with server playercount & docker status
+
+        Parameter server: server object to reference
+        Precondition: server is a Server dataclass object
+        """
+
+        if (DB.client.containers.get
+        (server.server.get("docker_name")).status.title().strip() == 'Running'):
+            status = "Online"
+        else:
+            status = "Offline"
+        await self.update_channel_header(server=server, container_status=status)
+    
+    async def update_channel_header(self, server:Server, container_status:str):
+        """
+        Uses implemented formatting to update linked channel heading.
+
+        Contains formatting for channel_header, overload this to change.
+
+        Parameter server: Server object to reference
+        Precondition: server is a Server dataclass object
+
+        Parameter container_status: String of online/offline status
+        """
+        ctx = self.bot.get_channel(server.cid)
+        await ctx.edit(
+            topic=f"{server.server_name}.{server.cog_name} | "
+                f"{len(server.online_players)}/"
+                f"{server.player_max if server.player_max > -1 else 'ꝏ'}"
+                f" | Status: {container_status}")
+        print(f"[Logging] -Header- {server.server_name}.{server.cog_name}:"
+            " Header Updated")
+
+#==========================Structural Methods===================================
+#   Contains filesystem add/load/create, setters/getters, and search methods
+#------------------------- Setters/Getters -------------------------------------
     def set_statistics(self, 
         statistics:dict, 
         server_name:str,
@@ -211,7 +354,7 @@ class GameCog(commands.Cog):
         else:
             raise NotImplementedError(
                 'get_statistics called with no paramenters ya dummy')
-
+#----------------------------- Find --------------------------------------------
     def find_server(self, cid:int=None, server_name:str=None) -> int:
         """
         Returns: Index of matching server to criteria, otherwise returns None
@@ -269,7 +412,7 @@ class GameCog(commands.Cog):
                 if stat['user'] == username: return i
             i+=1
         return None
-
+#----------------------------- Filesystem --------------------------------------
     def load_statistics(self, cog_name:str, server_name:str) -> list:
         """
         Returns: list of files in data/servers/{cog_name}/{docker_name} loaded
@@ -377,7 +520,10 @@ class GameCog(commands.Cog):
             raise NotImplementedError(
                 f"{server.server_name}.{server.cog_name} Error: {filename}"
                 " does not exist in statistics database")
-    
+
+#============================Core Methods=======================================
+# Contains scheduled tasks, boilerplate read/send, queue handling
+
     def read(self, server:Server, ignore=False):
         """
         Tails docker logs of server, sending output to filter().
@@ -425,65 +571,8 @@ class GameCog(commands.Cog):
                 f"\nSent {command} to {server.server_name}.{server.cog_name}:")
             print(f' --- {resp_str}')
         return resp_str
-    
-    def filter(self, server:Server, message:str, ignore:bool):
-        """
-        Filters logs using versionbased conditions by type and content. 
-        Adds leaves/joins to connectqueue and messages to message queue.
-        
-        To be overloaded by GameCog Children
 
-        Parameter server: server to store fingerprints in
-        Precondition: server is a Server dataclass object
-
-        Parameter message: string to filter using conditions
-
-        Parameter ignore: Bool whether or not to put events to queues
-        """
-        # Fingerprints message, only uniques get sent
-        if not server.fingerprint.is_unique_fingerprint(message): return
-
-        # Filter message into a dictionary
-        dict = get_msg_dict(username="__default__",
-            message=message,
-            MessageType=MessageType.MSG,
-            color=discord.Color.blue())
-
-        # If Not Ignore, Messages are sent and accounted for playtime
-        if dict and (not ignore):
-            mtype =dict.get('type')
-            if mtype == MessageType.JOIN or mtype == MessageType.LEAVE:
-                dict["server"] = server.server_name
-                server.connect_queue.put(dict)
-            server.message_queue.put(dict)
-
-    def get_uuid(self, username:str) -> str:
-        """
-        Returns: UUID of username if present, otherwise returns none.
-        
-        To be overloaded by GameCog children.     
-        """
-        return None
-
-    def is_player_online(self, server:Server, playername:str = None) -> bool:
-        """
-        Returns: True if playername matches element in online_player list
-
-        To be overloaded by GameCog children.
-        Not certain, as not all games get online players on launch
-
-        Parameter server: Server to search for players in
-
-        Parameter playername: player to search for in online_players
-        """
-        if playername:
-            for player in server.online_players:
-                if playername == player: return True
-            return False
-        else:   
-            raise NotImplementedError(
-                "is_player_online: Called without True playername.")
-    
+#------------------------- Queue Handlers --------------------------------------
     async def handle_connect_queue(self, server:Server):
         """
         Empties provided connect_queue, digesting events to corresponding dicts
@@ -587,7 +676,7 @@ class GameCog(commands.Cog):
                 filename=index.get('user'),
                 index=index.get('index'))
 
-    # Scheduled Tasks ----------------------------------------------------------
+#-------------------------Scheduled Tasks---------------------------------------
     @tasks.loop(seconds=DB.get_chat_link_time())
     async def pass_message(self):
         """
@@ -625,79 +714,3 @@ class GameCog(commands.Cog):
                     message=self.discord_message_format(
                         server=server,
                         message=message))
-
-    def send_message(self, server:Server, message:str):
-        """
-        Does nothing. To be overloaded by GameCog children.
-
-        Interface for Discord->Server Chatlink messaging.
-        Sends Message To gameserver based on version implementation:
-         - If no consolebased say command, does nothing.
-
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-
-        Parameter message: The message to send to server.
-        """
-        print(f"EEE - {message} GameCog send_message not implemented.")
-
-    def discord_message_format(self, server:Server, message:str) -> str:
-        """
-        Formats message based on version and logs to console.
-        - Default "<User> Message"
-
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-
-        Parameter message: message to format. 
-        """
-        item = f"<{message.author.name}> {message.content}"
-        print(f" {server.server_name}.{server.cog_name}: {item}")
-        return item
-                
-    # Headers ------------------------------------------------------------------
-    async def header_update(self,server:Server):
-        """
-        Updates header with server playercount & docker status
-
-        Parameter server: server object to reference
-        Precondition: server is a Server dataclass object
-        """
-        if (DB.client.containers.get
-        (server.server.get("docker_name")).status.title().strip() == 'Running'):
-            status = "Online"
-        else:
-            status = "Offline"
-        await self.update_channel_header(server=server, container_status=status)
-    
-    async def update_channel_header(self, server:Server, container_status:str):
-        """
-        Uses implemented formatting to update linked channel heading.
-
-        Contains formatting for channel_header, overload this to change.
-
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-
-        Parameter container_status: String of online/offline status
-        """
-        ctx = self.bot.get_channel(server.cid)
-        await ctx.edit(
-            topic=f"{server.server_name}.{server.cog_name} | "
-                f"{len(server.online_players)}/"
-                f"{server.player_max if server.player_max > -1 else 'ꝏ'}"
-                f" | Status: {container_status}")
-        print(f"[Logging] -Header- {server.server_name}.{server.cog_name}:"
-            " Header Updated")
-    
-    def get_player_list(self, server:Server=None) -> list:
-        """
-        Does nothing. To be overloaded by GameCog children.
-
-        For versions without a getlist function, returns None
-        Called on cog init for each server
-
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-        """
-        pass
