@@ -19,8 +19,8 @@ from cogs.gamecog import GameCog
 
 class Minecraft(GameCog):
 
-# COMMANDS ----------------------------------------------------------------------------------
-    # Whitelist -----------------------------------------------------------------------------------------------------------------------------------------------
+# COMMANDS ---------------------------------------------------------------------
+    # Whitelist ----------------------------------------------------------------
     @commands.command(name='whitelist', help=f"Usage: >whitelist <arg>. Requires a {DB.get_role_whitelist()} role.", brief="Whitelist a player.")
     @commands.has_any_role(*DB.get_role_whitelist())
     async def whitelist(self, ctx, *, mess):
@@ -36,7 +36,7 @@ class Minecraft(GameCog):
         if isinstance(error, CheckFailure):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
 
-    # Send --------------------------------------------------------------------------------------------------------------------------------------------------
+    # Send ---------------------------------------------------------------------
     @commands.command(name='sendcmd', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
     @has_permissions(administrator=True)
     async def sendcmd(self, ctx, *, mess):
@@ -51,7 +51,7 @@ class Minecraft(GameCog):
         if isinstance(error, CheckFailure):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary permissions.")
 
-    # List -------------------------------------------------------------------------------------------------------------------------------------------------------
+    # List ---------------------------------------------------------------------
     @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
     async def list(self, ctx):
         response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command="/list")

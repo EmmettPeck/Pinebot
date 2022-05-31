@@ -95,7 +95,7 @@ def embed_playtime(
     embed = discord.Embed(
         title=f"Playtime {username}",
         description=
-            'Total on Pineserver: ``'+td_format(total_playtime)+'``\n\u200b',
+            'Total on Pineserver: ``⌛ '+td_format(total_playtime)+'``\n\u200b',
         timestamp=datetime.utcnow(),
         color=discord.Color.dark_purple())
 

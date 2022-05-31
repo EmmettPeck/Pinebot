@@ -71,7 +71,7 @@ def is_recentest_join(statistics:dict) -> bool:
         raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
 
 # Playtime -----------------------------------------------------------------------------------------------------------------------------------------------
-def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -> datetime:
+def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> datetime:
     """
     Intelligently calculates playtime of a server for a player.
     Usage: calculate_playtime(server.statistics) -> playtime
@@ -112,8 +112,8 @@ def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -
     # Set Statistics
     statistics['total_playtime'] = str(total+joinList[0])
     statistics['calculated_index'] = c_index
-    cog.set_statistics(statistics=statistics, server_name=server_name,request=player_name)
-    # TODO cog.save_statistics()
+    cog.set_statistics(statistics=statistics, server_name=server_name, request=request)
+    cog.save_statistics(server_name=server_name, request=request)
 
     # Playtime for online players -- If there's 1 more join than leaves
     try:
@@ -125,7 +125,7 @@ def calculate_playtime(statistics:dict, server_name:str, player_name:str, cog) -
     to_return['playtime'] = total 
     return to_return
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------
-def handle_playtime(bot, who:str, server_name:str='total'):
+def handle_playtime(bot, request:str, server_name:str='total'):
     """
     Gathers playtime for applicable servers
     Gathers total playtime if requested
@@ -141,11 +141,11 @@ def handle_playtime(bot, who:str, server_name:str='total'):
         for cog in DB.get_game_cogs():
             current = bot.get_cog(cog.split('.',1)[1].title())
             if current == None: continue
-            stats = current.get_statistics(server_name=server_name, request=who)
+            stats = current.get_statistics(server_name=server_name, request=request)
 
             # Ensure servername
             if stats:
-                return calculate_playtime(statistics=stats, server_name=server_name, player_name=who,cog=current)
+                return calculate_playtime(statistics=stats, server_name=server_name, request=request,cog=current)
         return None
 
          

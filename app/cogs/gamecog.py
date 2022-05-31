@@ -236,6 +236,7 @@ class GameCog(commands.Cog):
 #==========================Structural Methods===================================
 #   Contains filesystem add/load/create, setters/getters, and search methods
 #------------------------- Setters/Getters -------------------------------------
+    
     def set_statistics(self, 
         statistics:dict, 
         server_name:str,
@@ -300,25 +301,27 @@ class GameCog(commands.Cog):
         request:str=None, 
         uuid:str=None, 
         playername:str=None 
-        ):
+        ) -> dict:
         """
-        Gets statistics dictionary matching request & server_name from server
+        Returns: First dtatistics dictionary matching request & server_name 
         
         Either uuid, playername, or request required. Based on provided 
         criteria, searches server for approprate dict to return. Otherwise
         returns None.
 
-        Parameter server_name: server_name containing the statistics instance
-        Preconditons: server_name is an str
+        Parameters:
+        ---
+        `server_name` : `str`
+            -- server_name containing the statistics instance
+        
+        `request`: `str`
+            -- The uuid or playername to get statistics of
 
-        Parameter request: Used when unsure if str is uuid or playername
-        Precondition: request is an str, a uuid or a playername 
+        `uuid` : `str`
+            -- The uuid to get statistics of
 
-        Parameter uuid: 
-        Preconditon: uuid is an str
-
-        Parameter playername: 
-        Precondition: playername is an str
+        `playername` : `str` 
+            -- The username to get statistics of
         """
         serv = self.find_server(server_name=server_name)
         if serv == None: return
@@ -341,9 +344,9 @@ class GameCog(commands.Cog):
 
             # Switch between found uuid & username 
             try:
-                if not find1 == None:
+                if find1 != None:
                     ret_val = self.servers[serv].statistics[find1]
-                elif not find2 == None: 
+                elif find2 != None: 
                     ret_val = self.servers[serv].statistics[find2]
                 else:
                     return None
@@ -493,24 +496,79 @@ class GameCog(commands.Cog):
             raise NotImplementedError(
                 "Create Statistics: Called without server")
 
-    def save_statistics(self, server:Server, filename:str, index:int=None):
+    def save_statistics(self, 
+        server_name:str,
+        server:Server=None, 
+        username:str=None, 
+        uuid:str=None, 
+        request:str=None,
+        index:int=None,
+        server_index:int=None):
         ''' 
-        TODO Refactor parameters to allow for saving a file w/ username, uuid, servername
-        Saves file from server statistics dict with matching filename
-
-        Parameter server:
-        Precondition: server is a Server dataclass object
-
-        Parameter filename: filename to save dictionary to
-
-        Parameter index: index of player statistics dictionary in instance list
+        Saves player statistic file for server. 
+        Requires a uuid, username, or request.
+        
+        Parameters:
+        ---
+        `server_name` : `str`
+            -- name of server containing statistics instance
+        `server` : `Server`
+            -- object containing statistics instance to save
+        `username` : `str`
+            -- username of player to save
+        `uuid` : `str`
+            -- uuid of player to save
+        `request` : `str`
+            -- uuid OR username of player to save
+        `index` : `int` 
+            -- index of playerfile to save
+        `server_index` : `int`
+            -- index of server to save to
         ''' 
+        # Set Server
+        if server == None:
+            server = self.servers[self.find_server(server_name=server_name)]
+
+        # Get indexes if not present
+        if server_index == None:
+            server_index = self.find_server(server.server_name)
+
+        # Request Handling
+        find1 = self.find_player(server=server, uuid=request) 
+        find2 = self.find_player(server=server, username=request)
+
+        if find1 != None:
+            # Request is a existing UUID
+            uuid = request
+            index = find1
+        elif find2 != None:
+            # Request is an existing Username
+            username = request
+            index = find2
+        else:
+            # Request is neither
+            return None
+
+        # Determine filename
+        if not uuid:
+            uuid = self.get_uuid(username=username)
+        filename = uuid if uuid != None else username
+
+        # Raise exception if missing uuid or username
+        if filename == None:
+            raise NotImplementedError(
+                f"{server.server_name}.{server.cog_name} Error: "
+                " called without username or uuid ya dummy.")
+
         # Dumps json to path, otherwise throws exception
         try:
             path = (f'../../data/servers/{server.cog_name}'
                     f'/{server.server_name}/{filename}.json')
             with open(path, 'w') as f:
-                     json.dump(server.statistics[index], f, indent = 2)
+                     json.dump(
+                         self.servers[server_index].statistics[index], 
+                         f, 
+                         indent = 2)
                      print(f"[Logging] -Filesystem- Successfully Saved {path}")
         except FileNotFoundError:
             raise NotImplementedError(
@@ -529,10 +587,13 @@ class GameCog(commands.Cog):
         Tails docker logs of server, sending output to filter().
         (Tail length defined in database.py)
 
-        Parameter server: The server to tail logs of
-        Precondition: server is a Server dataclass object
+        Parameters:
+        ---
+        `server` : `Server`
+            -- The server to tail logs of
 
-        Parameter ignore: True/False of whether to print, log, and save events
+        `ignore` : `bool`
+            -- Whether to print, log, and act on events
         """
         # Filters, then reads set_tail_len of logs to an iterable
         container = DB.client.containers.get(server.docker_name)
@@ -667,13 +728,11 @@ class GameCog(commands.Cog):
 
         # Save Statistics
         for index in save_list:
-            if index.get('uuid'): self.save_statistics(
-                server=server, 
-                filename=index.get('uuid'),
-                index=index.get('index'))
-            else: self.save_statistics(
-                server=server, 
-                filename=index.get('user'),
+            self.save_statistics(
+                server_name=server.server_name,
+                server=server,
+                uuid=index.get('uuid'),
+                username=index.get('user'),
                 index=index.get('index'))
 
 #-------------------------Scheduled Tasks---------------------------------------
