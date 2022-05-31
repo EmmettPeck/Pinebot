@@ -20,7 +20,7 @@ class DB:
     multiple discord cogs. Handles saving/loading of settings information.
     """
     def __init__(self):
-        self.CHAT_LINK_TIME = 2
+        self.CHAT_LINK_TIME = 0.5
         self.TAIL_LEN = 10
 
         self.load_containers()

@@ -728,9 +728,11 @@ class GameCog(commands.Cog):
             ctx = self.bot.get_channel(server.cid)
 
             # Message Queue
-            while not (server.message_queue.qsize() == 0): 
-                await ctx.send(embed=embed_message(server.message_queue.get()))
-
+            try:
+                await ctx.send(embed=embed_message(server.message_queue.get_nowait()))
+            except queue.Empty:
+                await asyncio.sleep(0)
+            # Connect Queue
             await self.handle_connect_queue(server=server)
     @pass_message.before_loop
     async def before_pass_mc_message(self):
