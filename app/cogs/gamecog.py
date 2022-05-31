@@ -14,8 +14,10 @@ Authors: Emmett Peck (EmmettPeck)
 Version: May 27th, 2022
 """
 
+import asyncio
 import json
 import os
+import queue
 
 from discord.ext import commands, tasks
 import discord
@@ -409,9 +411,9 @@ class GameCog(commands.Cog):
             uuid = self.get_uuid(username=username)
         for stat in server.statistics:
             if uuid:
-                if stat['uuid'] == uuid: return i
+                if stat.get('uuid') == uuid: return i
             else:
-                if stat['user'] == username: return i
+                if stat.get('user') == username: return i
             i+=1
         return None
 #----------------------------- Filesystem --------------------------------------
@@ -643,68 +645,45 @@ class GameCog(commands.Cog):
 
         Parameter server: The server to reference for a connect_queue
         """
-        # Quick Return
-        if server.connect_queue.qsize() == 0: return
-
-        # Logging stats indexes that need to be saved
         save_list = [] 
 
         # Digest Events
-        while not (server.connect_queue.qsize() == 0):
-            x = server.connect_queue.get()
-            
-            # Event Type (Join/Leave)
-            temp = x.get('type')
-            if temp == None: 
-                raise NotImplementedError(
-                    f"handle_connect_queue none 'type': {x}")
-            join = True if temp == MessageType.JOIN else False
-            
-            # Find Player Index
-            user = x.get('username')
-            uuid = self.get_uuid(user)
-            player_index = self.find_player(
-                server=server, 
-                username=user, 
-                uuid=uuid)
+        try:
+            while True:
+                x = server.connect_queue.get_nowait()
+                
+                # Event Type (Join/Leave)
+                temp = x.get('type')
+                if temp == None: 
+                    raise NotImplementedError(
+                        f"handle_connect_queue none 'type': {x}")
+                join = True if temp == MessageType.JOIN else False
+                
+                # Find Player Index
+                user = x.get('username')
+                uuid = self.get_uuid(user)
 
-            # Add Player If Not Present
-            if player_index == None:
-                if uuid:
-                    self.create_statistics(
-                        server=server,
-                        username=user, 
-                        uuid=uuid)
-                else:
-                    self.create_statistics(server=server,username=user)
-                # Get Index of new player
-                player_index = self.find_player(
-                    username=user,
-                    server=server, 
-                    uuid=uuid)
+                # Get index of player -- adding player if not present
+                player_index = self.find_player(server=server, username=user, uuid=uuid)
                 if player_index == None:
-                    raise NotImplemented(
-                        "Player not being created in create_statistics"
-                        " or appended to statistics.")
-            
-            # Add Connect Events w/ fixing logic
-            recentest_is_join = analytics_lib.is_recentest_join(
-                statistics=server.statistics[player_index])
-            print(f"Jointype: {join}, Recentest is join: {recentest_is_join}")
+                    if uuid:
+                        self.create_statistics(server=server,username=user, uuid=uuid)
+                    else:
+                        self.create_statistics(server=server,username=user)
+                    player_index = self.find_player(username=user,server=server, uuid=uuid)
+                
+                # Add Connect Events w/ fixing logic
+                recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics[player_index])
 
-            # Based on recentest is join, prevents double joins/leaves which 
-            # would otherwise mess up calculations later
-            try:
-                # If Adding Join and the most recent entry is a join, 
-                # remove previous join
+                # Based on recentest is join, prevents double joins/leaves which would otherwise mess up calculations later
+                # If Adding Join and the most recent entry is a join, remove previous join
                 if join == True:
                     if recentest_is_join == True:
                         server.statistics[player_index]['joins'].pop()
                     server.statistics[player_index]['joins'].append(
                         str(x.get('time')))
 
-                # If adding Leave and the most recent entry is a leave, 
-                # ignore adding leave
+                # If adding Leave and the most recent entry is a leave, ignore adding leave
                 elif join == False: 
                     if recentest_is_join == True:
                         server.statistics[player_index]['leaves'].append(
@@ -712,27 +691,28 @@ class GameCog(commands.Cog):
 
                 # Add modification to savelist to later be saved
                 save_list.append({'index':player_index,'uuid':uuid,'user':user})
-            except:
-                raise NotImplementedError(
-                    f"{server.cog_name}:{x} event not added.")
 
-            # Online List Logging
-            if join and not (x['username'] in server.online_players):
-                server.online_players.append(x['username'])
-            elif (not join) and (x['username'] in server.online_players): 
-                server.online_players.remove(x['username'])
-            
-        # Update Header
-        await self.header_update(server=server)
 
-        # Save Statistics
-        for index in save_list:
-            self.save_statistics(
-                server_name=server.server_name,
-                server=server,
-                uuid=index.get('uuid'),
-                username=index.get('user'),
-                index=index.get('index'))
+                # Online List Logging
+                if join and not (x['username'] in server.online_players):
+                    server.online_players.append(x['username'])
+                elif (not join) and (x['username'] in server.online_players): 
+                    server.online_players.remove(x['username'])
+        except queue.Empty:
+            if save_list:
+                # Update Header (Without hanging up execution, as I believe headers can only be updated so frequently)
+                loop = asyncio.get_event_loop()
+                loop.create_task(self.header_update(server=server))
+
+            # Save Statistics
+            for index in save_list:
+                await asyncio.sleep(0)
+                self.save_statistics(
+                    server_name=server.server_name,
+                    server=server,
+                    uuid=index.get('uuid'),
+                    username=index.get('user'),
+                    index=index.get('index'))
 
 #-------------------------Scheduled Tasks---------------------------------------
     @tasks.loop(seconds=DB.get_chat_link_time())

@@ -58,7 +58,7 @@ class Minecraft(GameCog):
         
         await ctx.message.delete()
         if response:
-            await ctx.send(embed=embed_build(response))
+            await ctx.send(embed=embed_build(message=response, reference=ctx.author))
         else:
             await ctx.send(embed=embed_build("Server not found. Use command only in 'Minecraft' text channels."))
 
@@ -67,8 +67,11 @@ class Minecraft(GameCog):
     def get_version(self) -> str:
         return "Minecraft"
 
-    def get_uuid(self, username):
+    def get_uuid(self, username:str):
         """Get player UUID from username"""
+        if username == None:
+            return None
+
         converter = UsernameToUUID(username)
         uuid = converter.get_uuid()
         return uuid
@@ -111,7 +114,7 @@ class Minecraft(GameCog):
         player_list = []
         response = self.send(server=server,command="/list")
         if not response: return None
-        player_max = int(response.split("max of",maxsplit=1)[1].split(maxsplit= 1)[0])
+        server.player_max = int(response.split("max of")[1].split()[0])
         stripped = response.split("online:")[1].strip()
         try:
             for player in stripped.split(','):
@@ -120,8 +123,6 @@ class Minecraft(GameCog):
             return None
         else:
             if player_list == ['']: return None
-
-            server.player_max = player_max
             return player_list
 
     def is_player_online(self, server, uuid_index:int = None, playername:str = None) -> bool:

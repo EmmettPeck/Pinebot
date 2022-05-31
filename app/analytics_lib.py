@@ -80,7 +80,7 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
     Total stored as firstjoin+totalplaytime. On load converted to timedelta.
     """
 
-    c_index = statistics.get('calculated_index')
+    pre_index = c_index = statistics.get('calculated_index')
     # If calculated_index is less than leaves total_index, and joins == leaves return total
     try:
         if (c_index <= len(statistics.get('leaveList'))) and (len(statistics.get('leaveList')) == len(statistics.get('leaveList'))): return total
@@ -108,13 +108,16 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
                 total += (leaveList[index] - joinList[index])
                 c_index+=1
     except TypeError: pass
-    
+
     # Set Statistics
     statistics['total_playtime'] = str(total+joinList[0])
     statistics['calculated_index'] = c_index
     cog.set_statistics(statistics=statistics, server_name=server_name, request=request)
-    cog.save_statistics(server_name=server_name, request=request)
     to_return['playtime'] = total 
+
+    # Save only if incremented
+    if c_index > pre_index:
+        cog.save_statistics(server_name=server_name, request=request)
 
     # Playtime for online players -- If there's 1 more join than leaves
     try:
