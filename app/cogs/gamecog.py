@@ -370,14 +370,13 @@ class GameCog(commands.Cog):
         Parameter cid: Server discord channel id to match to
         Precondition: cid is an int, cid != 0
         """
-        if cid:
-            i = 0
+        i = 0
+        if cid != None:
             for server in self.servers:
                 if server.cid == cid: return i
                 i+=1
             return None
-        elif server_name:
-            i = 0
+        elif server_name != None:
             for server in self.servers:
                 if server.server_name == server_name: return i
                 i+=1
@@ -525,13 +524,17 @@ class GameCog(commands.Cog):
         `server_index` : `int`
             -- index of server to save to
         ''' 
-        # Set Server
-        if server == None:
-            server = self.servers[self.find_server(server_name=server_name)]
-
         # Get indexes if not present
         if server_index == None:
-            server_index = self.find_server(server.server_name)
+            server_index = self.find_server(server_name=server_name)
+            if server_index == None:
+                raise NotImplementedError(f"sindex:{server_index}, sname:{server_name}")
+
+        # Set Server
+        if server == None:
+            server = self.servers[server_index]
+            if server == None:
+                raise NotImplementedError()#
 
         # Request Handling
         find1 = self.find_player(server=server, uuid=request) 
@@ -574,10 +577,6 @@ class GameCog(commands.Cog):
             raise NotImplementedError(
                 f"{server.server_name}.{server.cog_name} Error: {filename}"
                 " does not exist in current filestructure")
-        except:
-            raise NotImplementedError(
-                f"{server.server_name}.{server.cog_name} Error: {filename}"
-                " does not exist in statistics database")
 
 #============================Core Methods=======================================
 # Contains scheduled tasks, boilerplate read/send, queue handling

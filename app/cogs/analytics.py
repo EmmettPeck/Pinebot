@@ -65,7 +65,7 @@ class Analytics(commands.Cog):
             total = analytics_lib.handle_playtime(
                 bot=self.bot,
                 server_name=server, 
-                who=name)
+                request=name)
             await ctx.send(
                 embed = embed_build(
                 reference=ctx.author,
@@ -79,7 +79,7 @@ class Analytics(commands.Cog):
             # Get Playtime From Server
             single = analytics_lib.handle_playtime(
                 bot=self.bot, 
-                who=name,
+                request=name,
                 server_name=server)
 
             # Print Playtime

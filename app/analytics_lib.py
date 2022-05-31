@@ -114,6 +114,7 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
     statistics['calculated_index'] = c_index
     cog.set_statistics(statistics=statistics, server_name=server_name, request=request)
     cog.save_statistics(server_name=server_name, request=request)
+    to_return['playtime'] = total 
 
     # Playtime for online players -- If there's 1 more join than leaves
     try:
@@ -122,7 +123,6 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
             to_return['playtime'] = total + now - joinList[c_index+1]
     except TypeError: # Catch 'NoneType'
         pass
-    to_return['playtime'] = total 
     return to_return
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------
 def handle_playtime(bot, request:str, server_name:str='total'):
