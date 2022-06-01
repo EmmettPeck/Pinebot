@@ -6,6 +6,7 @@
 
 from itertools import cycle
 from datetime import datetime
+import logging
 import discord
 from discord.ext import tasks, commands
 
@@ -24,9 +25,9 @@ class Presence(commands.Cog):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print("----------------- PineBot -----------------")
-        print(f'Logged in as: {self.bot.user.name} - {self.bot.user.id}\nVersion: {discord.__version__}\n')
-        print('Successfully logged in and booted...\n')
+        logging.info("----------------- PineBot -----------------")
+        logging.info(f'Logged in as: {self.bot.user.name} - {self.bot.user.id} Version: {discord.__version__}')
+        logging.info('Successfully logged in and booted...')
     
     @tasks.loop(minutes = 1)
     async def set_presence(self):

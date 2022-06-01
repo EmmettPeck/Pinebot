@@ -18,6 +18,7 @@ import asyncio
 import json
 import os
 import queue
+import logging
 
 from discord.ext import commands, tasks
 import discord
@@ -36,39 +37,22 @@ class GameCog(commands.Cog):
     send commands to dockerized server, or log player activity & store player
     specific information.
 
-    Attribute bot: The current discord bot instance
-    Invarient: Is a Discord.py bot object
+    Attributes
+    ---
+    `bot` : `discord.bot`
+        -- The current discord bot instance
+    `servers` - `list(Server)`
+        -- List of version matching servers
     """
-    ### Hidden Attributes
-    # Attribute servers: List of loaded servers
-    # Invariant: Is a list of accessable dockerized servers of same version
-    # --------------------------------------------------------------------------
+
     def __init__(self, bot):
         self.bot = bot
-        self.servers = []
-        
-        # LOAD SERVERS
-        # -----------------------------------------------------
-        # Adds Containers with matching version
-        for cont in DB.get_containers():
-            cog_name = split_first(cont.get('version'),':')[0]
-            if cog_name == self.get_version():
-                server = Server(
-                    server=cont, 
-                    bot=self.bot, 
-                    statistics=self.load_statistics(
-                        cog_name=cog_name,
-                        server_name=cont.get('name')),
-                    cog_name=cog_name)
-
+        self.servers = self.load_servers()
                 # Update Online List 
                     # TODO: Check if online players most recent is join, 
                     # if not, add a join at discovery time. Also would need to
                     # include addplayer for unrecognized players
                         # TODO break out addplayer function
-                pl = self.get_player_list(server)
-                server.online_players = pl if pl else []
-                self.servers.append(server)
 
         # Ensure fingerprinted messages before cog was online
         for server in self.servers:
@@ -151,7 +135,7 @@ class GameCog(commands.Cog):
         Parameter message: The message to send to server.
         """
 
-        print(f"EEE - {message} GameCog send_message not implemented.")
+        logging.warning(f"{message} GameCog send_message not implemented.")
 
     def discord_message_format(self, server:Server, message:str) -> str:
         """
@@ -165,7 +149,7 @@ class GameCog(commands.Cog):
         """
 
         item = f"<{message.author.name}> {message.content}"
-        print(f" {server.server_name}.{server.cog_name}: {item}")
+        logging.info(f'{server.server_name}.{server.cog_name}: "{item}"')
         return item
 
     def filter(self, server:Server, message:str, ignore:bool):
@@ -232,8 +216,7 @@ class GameCog(commands.Cog):
                 f"{len(server.online_players)}/"
                 f"{server.player_max if server.player_max > -1 else 'ꝏ'}"
                 f" | Status: {container_status}")
-        print(f"[Logging] -Header- {server.server_name}.{server.cog_name}:"
-            " Header Updated")
+        logging.debug(f"Updated Header {server.server_name}.{server.cog_name}")
 
 #==========================Structural Methods===================================
 #   Contains filesystem add/load/create, setters/getters, and search methods
@@ -254,20 +237,18 @@ class GameCog(commands.Cog):
         criteria, searches server for approprate dict to update. Otherwise does 
         not update.
 
-        Parameter statistics: The statistics dict to update self to
-        Preconditions: statistics is a dict
-
-        Parameter server_name: server_name containing the statistics instance
-        Preconditons: server_name is an str
-
-        Parameter uuid: 
-        Preconditon: uuid is an str
-
-        Parameter playername: 
-        Precondition: playername is an str
-
-        Parameter request: Used when unsure if str is uuid or playername
-        Precondition: request is an str, a uuid or a playername 
+        Parameters:
+        ---
+        `statistics` : `dict`
+            -- The statistics dict to update self to
+        `server_name` : `str` 
+            -- server_name containing the statistics instance
+        `uuid` : str
+            -- uuid to set statistics entry of
+        `playername` : str
+            -- playername to set statistics entry of
+        `request` : str
+            -- Used when unsure if str is uuid or playername
         """
         try:
             serv = self.find_server(server_name=server_name)
@@ -315,13 +296,10 @@ class GameCog(commands.Cog):
         ---
         `server_name` : `str`
             -- server_name containing the statistics instance
-        
         `request`: `str`
             -- The uuid or playername to get statistics of
-
         `uuid` : `str`
             -- The uuid to get statistics of
-
         `playername` : `str` 
             -- The username to get statistics of
         """
@@ -366,11 +344,12 @@ class GameCog(commands.Cog):
 
         Requires cid or server_name to be provided.
 
-        Parameter server_name: Server name to find match to
-        Preconditon: server_name is an str, server_name != ''
-
-        Parameter cid: Server discord channel id to match to
-        Precondition: cid is an int, cid != 0
+        Parameters:
+        ---
+        `server_name` : `str`
+            -- Server name to find match to
+        `cid` : `int`
+            -- Server discord channel id to match to
         """
         i = 0
         if cid != None:
@@ -397,32 +376,72 @@ class GameCog(commands.Cog):
         Finds player statistics object, returns index of it. Accounts for UUIDs
         and usernames. Requires server and either username or uuid parameter.
         
-        Parameter server: server to search for player statistics in
-        Precondition: server is a Server dataclass object
-
-        Parameter username: username of player to be found
-        Preconditon: username is an str, username != ''
-
-        Parameter uuid: uuid of player to be found, if exists
-        Precondition: uuid is an str, uuid != ''
+        Parameters:
+        ---
+        `server` : `Server`
+            -- server to search for player statistics in
+        `username` : `str`
+            -- username of player to be found
+        `uuid` : `str`
+            -- uuid of player to be found, if exists
         """
         i = 0
         if not uuid:
             uuid = self.get_uuid(username=username)
         for stat in server.statistics:
             if uuid:
-                if stat.get('uuid') == uuid: return i
+                if stat.get('uuid') == uuid: 
+                    logging.debug(f"find_player found uuid at {i}")
+                    return i
             else:
-                if stat.get('user') == username: return i
+                if stat.get('user') == username: 
+                    logging.debug(f"find_player found user at {i}")
+                    return i
             i+=1
+        logging.debug("find_player found no player")
         return None
 #----------------------------- Filesystem --------------------------------------
+    def load_servers(self, bot=None, cog_version:str=None) -> list:
+        """
+        Returns list of loaded Server objects from containers matching version
+
+        Parameters:
+        ---
+        `bot` : `discord.bot`
+            -- The current discord bot instance
+        `cog_version` : `str`:
+            -- The version of GameCog to match
+        """
+        server_list = []
+        bot = self.bot if bot == None else bot
+        cog_version = self.get_version() if cog_version == None else cog_version
+
+        # Add Containers with matching version
+        for container in DB.get_containers():
+            cog_name = split_first(container.get('version'),':')[0]
+            if cog_name == cog_version:
+                # Create Server Object
+                server=Server(server=container, bot=bot, cog_name=cog_name,
+                    statistics=self.load_statistics(cog_name=cog_name,server_name=container.get('name')))
+
+                # Get Online PlayerList
+                pl = self.get_player_list(server)
+                server.online_players = pl if pl else []
+                
+                server_list.append(server)
+                logging.info(f"loaded {server.server_name} with {len(server.online_players)}/{server.player_max} players.")
+        return server_list
+
     def load_statistics(self, cog_name:str, server_name:str) -> list:
         """
         Returns: list of files in data/servers/{cog_name}/{docker_name} loaded
         
-        Parameter cog_name: name of cog, loads matching directory name's files
-        Parameter server_name: name of server in cog, loads matching dir files
+        Parameters:
+        ---
+        `cog_name` : `str`
+            -- name of cog, loads matching directory name's files
+        `server_name` : `str`
+            -- name of server in cog, loads matching dir files
         """
         stats = []
         try:
@@ -433,13 +452,11 @@ class GameCog(commands.Cog):
 
             # For file in folder
             for item in os.listdir(path):
-                print(f"    -Filesystem- load_item: {item}")
+                logging.debug(f"Loading item: {item}")
                 with open(path+item) as f:
                     stats.append(json.load(f))
         except FileNotFoundError:
-            print(
-                f"{server_name}.{__name__}"
-                f" Error: No files found for load_statistics")
+            logging.warning(f"{server_name}.{__name__} no files found for load_statistics")
             return stats
         else:
             return stats
@@ -574,7 +591,7 @@ class GameCog(commands.Cog):
                          self.servers[server_index].statistics[index], 
                          f, 
                          indent = 2)
-                     print(f"[Logging] -Filesystem- Successfully Saved {path}")
+                     logging.debug(f"Successfully Saved {path}")
         except FileNotFoundError:
             raise NotImplementedError(
                 f"{server.server_name}.{server.cog_name} Error: {filename}"
@@ -605,7 +622,7 @@ class GameCog(commands.Cog):
         for msg in response.strip().split('\n'):
             self.filter(message=msg, server=server,ignore=ignore)
 
-    def send(self, server:Server, command:str, logging:bool=False) -> str: 
+    def send(self, server:Server, command:str, log:bool=False, filter=True) -> str: 
         """
         Sends command to server, logging response if true
         Returns: Server response to command (str)
@@ -621,17 +638,17 @@ class GameCog(commands.Cog):
         container = DB.client.containers.get(server.docker_name)
 
         # Single-Quote Filtering (Catches issue #9)
-        filtered_command = command.replace("'", "'\\''") 
+        if filter:
+            command = command.replace("'", "'\\''") 
         
         # Send Command, and decipher tuple
-        resp_bytes = container.exec_run(f"{filtered_command}")
+        resp_bytes = container.exec_run(command)
         resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
 
         # Logging
-        if logging:
-            print(
-                f"\nSent {command} to {server.server_name}.{server.cog_name}:")
-            print(f' --- {resp_str}')
+        if log:
+            logging.info(f"Sent {command} to {server.server_name}.{server.cog_name}")
+            logging.info(f"Response: {resp_str}")
         return resp_str
 
 #------------------------- Queue Handlers --------------------------------------
@@ -658,6 +675,7 @@ class GameCog(commands.Cog):
                     raise NotImplementedError(
                         f"handle_connect_queue none 'type': {x}")
                 join = True if temp == MessageType.JOIN else False
+                logging.debug(f'handle_connect_queue join={join}')
                 
                 # Find Player Index
                 user = x.get('username')
@@ -665,33 +683,40 @@ class GameCog(commands.Cog):
 
                 # Get index of player -- adding player if not present
                 player_index = self.find_player(server=server, username=user, uuid=uuid)
+                logging.debug(f'handle_connect_queue playerindex={player_index}')
                 if player_index == None:
+                    logging.debug(f'handle_connect_queue creating user')
                     if uuid:
                         self.create_statistics(server=server,username=user, uuid=uuid)
                     else:
                         self.create_statistics(server=server,username=user)
                     player_index = self.find_player(username=user,server=server, uuid=uuid)
+                    logging.debug(f'handle_connect_queue playerindex={player_index}')
+                    if player_index == None:
+                        continue
                 
                 # Add Connect Events w/ fixing logic
                 recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics[player_index])
-
+                logging.debug(f'handle_connect_queue recentest_is_join={recentest_is_join}')
                 # Based on recentest is join, prevents double joins/leaves which would otherwise mess up calculations later
                 # If Adding Join and the most recent entry is a join, remove previous join
                 if join == True:
                     if recentest_is_join == True:
+                        logging.debug(f'handle_connect_queue: popping {user} join')
                         server.statistics[player_index]['joins'].pop()
+                    logging.debug(f'handle_connect_queue: adding {user} join')
                     server.statistics[player_index]['joins'].append(
                         str(x.get('time')))
 
                 # If adding Leave and the most recent entry is a leave, ignore adding leave
                 elif join == False: 
                     if recentest_is_join == True:
+                        logging.debug(f'handle_connect_queue: adding {user} leave')
                         server.statistics[player_index]['leaves'].append(
                             str(x.get('time')))
 
                 # Add modification to savelist to later be saved
                 save_list.append({'index':player_index,'uuid':uuid,'user':user})
-
 
                 # Online List Logging
                 if join and not (x['username'] in server.online_players):
@@ -699,10 +724,13 @@ class GameCog(commands.Cog):
                 elif (not join) and (x['username'] in server.online_players): 
                     server.online_players.remove(x['username'])
         except queue.Empty:
+            logging.debug(f'{server.server_name} queue.Empty exception')
+
+            # Update Header (Without hanging up execution, as I believe headers can only be updated so frequently)
             if save_list:
-                # Update Header (Without hanging up execution, as I believe headers can only be updated so frequently)
                 loop = asyncio.get_event_loop()
                 loop.create_task(self.header_update(server=server))
+                logging.debug(f'Scheduled header_update for {server.server_name}')
 
             # Save Statistics
             for index in save_list:
@@ -729,9 +757,11 @@ class GameCog(commands.Cog):
 
             # Message Queue
             try:
-                await ctx.send(embed=embed_message(server.message_queue.get_nowait()))
+                while True:
+                    await ctx.send(embed=embed_message(server.message_queue.get_nowait()))
             except queue.Empty:
                 await asyncio.sleep(0)
+
             # Connect Queue
             await self.handle_connect_queue(server=server)
     @pass_message.before_loop
@@ -749,8 +779,5 @@ class GameCog(commands.Cog):
             return
         for server in self.servers:
             if message.channel.id == server.cid:
-                self.send_message(
-                    server=server, 
-                    message=self.discord_message_format(
-                        server=server,
-                        message=message))
+                self.send_message(server=server, message=
+                    self.discord_message_format(server=server,message=message))

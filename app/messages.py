@@ -3,6 +3,7 @@ messages.py
 By: Emmett Peck
 Message filtering and dictionary building from serverlogs for various MC versions/games
 """
+import logging
 import discord
 from enum import Enum
 from datetime import datetime
@@ -55,5 +56,5 @@ def get_type_icon(type):
 def get_msg_dict(username, message, MessageType, color):
         """Appends and prints messages to return_list as dictionaries"""
         local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.utcnow(), 'color': color}
-        print (f" --- Time:{local_dict['time']}, User:{username}, Msg:{message}, Type:{MessageType}")
+        logging.info(f'"{username} {message}" {MessageType}')
         return local_dict

@@ -21,7 +21,7 @@ class DB:
     """
     def __init__(self):
         self.CHAT_LINK_TIME = 0.5
-        self.TAIL_LEN = 10
+        self.TAIL_LEN = 20
 
         self.load_containers()
         self.load_role_whitelist()

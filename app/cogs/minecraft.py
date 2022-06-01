@@ -3,6 +3,7 @@ minecraft.py
 By: Emmett Peck
 A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
 """
+import logging
 import discord
 from discord.ext import commands
 from discord.ext.commands import has_permissions, CheckFailure
@@ -76,27 +77,13 @@ class Minecraft(GameCog):
         uuid = converter.get_uuid()
         return uuid
 
-    def send(self, server:Server, command, logging=True) -> list: 
+    def send(self, server:Server, command:str, log=False) -> list: 
         """
         OVERLOAD: 
         Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
         """
-        if server == None: 
-            print(f"{server.server_name}.{__name__}: send server None") 
-            return
-            
-        # Attach Container
-        container = DB.client.containers.get(server.docker_name)
-
-        # Send Command, and decipher tuple
-        filtered_command = command.replace("'", "'\\''") # Single-Quote Filtering (Catches issue #9)
-        resp_bytes = container.exec_run(f"rcon-cli '{filtered_command}'")
-        resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
-        
-        if logging:
-            print(f"\nSent MC command {command} to {server.server_name}.{__name__}:")
-            print(f' --- {resp_str}')
-        return resp_str
+        filtered = command.replace("'", "'\\''") 
+        super().send(server=server,command=f"rcon-cli '{filtered}'", log=log, filter=False)
 
     def send_message(self, server:Server, message:str):
         '''
@@ -113,32 +100,41 @@ class Minecraft(GameCog):
         """
         player_list = []
         response = self.send(server=server,command="/list")
-        if not response: return None
-        server.player_max = int(response.split("max of")[1].split()[0])
+
+        # Response Catch
+        if not response:
+            logging.error(f'get_player_list got False evaluating response {response}')
+            return None
+
+        # Unsafe Player_Max Split
+        player_max = int(response.split("max of")[1].split()[0])
+        logging.debug(f"{server.server_name} player_max={player_max}")
+        server.player_max = player_max
+
+        # Break Apart Onlineplayer name strings
         stripped = response.split("online:")[1].strip()
         try:
             for player in stripped.split(','):
                 player_list.append(player.strip())
         except IndexError:
+            logging.warning(f'IndexError in get_player_list for {server.server_name} while splitting response:{response}, playerlist:{player_list}')
             return None
         else:
-            if player_list == ['']: return None
+            if player_list == ['']: 
+                logging.debug(f'get_player_list: No players online {server.server_name}')
+                return None
             return player_list
 
-    def is_player_online(self, server, uuid_index:int = None, playername:str = None) -> bool:
+    def is_player_online(self, server:Server,  playername:str) -> bool:
         """
         OVERLOAD: Minecraft
         If uuid_index or playername in online_players: Returns True, else False
         """
-        if uuid_index:
-            for player in server.online_players:
-                if analytics_lib.get_player_uuid(player) == DB.playerstats[uuid_index]["UUID"]: return True
-            return False
-        elif playername:
-            for player in server.online_players:
-                if playername == player: return True
-            return False
-        raise NotImplementedError("is_player_online: Called without True uuid or playername.")
+        for player in server.online_players:
+            if playername == player: 
+                logging.debug(f"is_player_online {playername} is online {server.server_name}")
+                return True
+        return False
 
     # Filter--------------------------------------------------------------------------------------------------------------------------------------------
     def filter(self, server:Server, message:str, ignore=False):
