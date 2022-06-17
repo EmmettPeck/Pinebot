@@ -226,7 +226,7 @@ class GameCog(commands.Cog):
         """
         ctx = self.bot.get_channel(server.cid)
         await ctx.edit(
-            topic=f"{server.server_name}.{server.cog_name} | "
+            topic=f"{server.server_name} | {server.version} | "
                 f"{len(server.online_players)}/"
                 f"{server.player_max if server.player_max > -1 else 'ꝏ'}"
                 f" | Status: {container_status}")
