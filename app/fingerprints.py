@@ -38,7 +38,7 @@ class FingerPrints:
     def is_unique_fingerprint(self, string, database_list=None):
         """Compares hash to provided database_list"""
         fingerprint = self.get_hash_int(string)
-        length = DB.get_tail_len()
+        length = 100
 
         # Catch to set to own fingerprintdb
         if database_list == None:
@@ -52,7 +52,7 @@ class FingerPrints:
             # Insert new elements to list 
             database_list.insert(0, fingerprint)
             # Pop elements over length to keep the list small
-            if len(database_list) > length: 
+            if len(database_list) > length-1: 
                 database_list.pop(length)
             self.save_fingerprintDB()
             return True
