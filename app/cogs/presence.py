@@ -31,7 +31,7 @@ class Presence(commands.Cog):
     
     @tasks.loop(minutes = 1)
     async def set_presence(self):
-        hour = int(datetime.utcnow().strftime("%H"))
+        hour = int(datetime.now().strftime("%H"))
 
         #print(f"Hour: {hour}")
         if hour >= 22 or hour < 7:

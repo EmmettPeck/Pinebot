@@ -96,7 +96,7 @@ def embed_playtime(
         title=f"Playtime {username}",
         description=
             'Total on Pineserver: ``⌛ '+td_format(total_playtime)+'``\n\u200b',
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(),
         color=discord.Color.dark_purple())
 
     # Add Top Server Dicts
@@ -126,7 +126,7 @@ def embed_build(message:str, reference:discord.Member):
     embed = discord.Embed(
         title=f"📄 {message}",
         color=discord.Color.blurple(),
-        timestamp=datetime.utcnow())
+        timestamp=datetime.now())
     # Set User Reference
     embed.set_footer(
         text='Requested by: '+reference.display_name, 

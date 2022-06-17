@@ -9,6 +9,7 @@ Version: May 27th, 2022
 """
 
 from datetime import timedelta
+import logging
 
 from discord.ext import commands
 
@@ -45,7 +46,7 @@ class Analytics(commands.Cog):
         Parameter server: Server to get playtime from.
         Precondition: server is an str
         """
-
+        logging.info(f"Gathering playtime for {name} {server}")
         # If name not provided, prompt user and return.
         if name == None:
             await ctx.send(
@@ -90,6 +91,7 @@ class Analytics(commands.Cog):
                         username=name,
                         total_playtime=single.get('playtime'), 
                         dict_list=[single]))
+                logging.info("Playtime command complete")
                 return
 
             # If Playtime present, but empty, prompt user
@@ -113,8 +115,7 @@ class Analytics(commands.Cog):
 
             # For other false evaluating conditons, notify developer.
             else:
-                raise NotImplementedError(f"single == {single}")
-
+                logging.ERROR(f"ERROR: Other false evaluating condition in analytics single == {single}")
 
 def setup(bot):
     """

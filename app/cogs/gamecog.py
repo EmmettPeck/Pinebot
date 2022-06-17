@@ -96,7 +96,8 @@ class GameCog(commands.Cog):
         For versions without a getlist function, returns None
         Called on cog init for each server
 
-        Parameter server: Server object to reference
+        `server`: `Server`
+            -- object to reference
         Precondition: server is a Server dataclass object
         """
 
@@ -109,9 +110,12 @@ class GameCog(commands.Cog):
         To be overloaded by GameCog children.
         Not certain, as not all games get online players on launch
 
-        Parameter server: Server to search for players in
-
-        Parameter playername: player to search for in online_players
+        Parameters:
+        ---
+        `server` : `Server`
+            -- Server to search in
+        `playername` : `str`
+            -- Playername to search server.online_players for
         """
         if playername:
             for player in server.online_players:
@@ -129,10 +133,12 @@ class GameCog(commands.Cog):
         Sends Message To gameserver based on version implementation:
          - If no consolebased say command, does nothing.
 
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-
-        Parameter message: The message to send to server.
+        Parameters:
+        ---
+        `server` : `Server`
+            -- Server to to reference the information of
+        `message` : `str`
+            -- Message to format
         """
 
         logging.warning(f"{message} GameCog send_message not implemented.")
@@ -142,14 +148,16 @@ class GameCog(commands.Cog):
         Formats message based on version and logs to console.
         - Default "<User> Message"
 
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-
-        Parameter message: message to format. 
+        Parameters:
+        ---
+        `server` : `Server`
+            -- Server to to reference the information of
+        `message` : `str`
+            -- Message to format
         """
 
         item = f"<{message.author.name}> {message.content}"
-        logging.info(f'{server.server_name}.{server.cog_name}: "{item}"')
+        logging.critical(f'{server.server_name}.{server.cog_name}: "{item}"')
         return item
 
     def filter(self, server:Server, message:str, ignore:bool):
@@ -159,12 +167,14 @@ class GameCog(commands.Cog):
         
         To be overloaded by GameCog Children
 
-        Parameter server: server to store fingerprints in
-        Precondition: server is a Server dataclass object
-
-        Parameter message: string to filter using conditions
-
-        Parameter ignore: Bool whether or not to put events to queues
+        Parameters:
+        ---
+        `server` : `Server`
+            -- Server to store fingerprints in
+        `message` : `str`
+            -- Message string to filter using conditions
+        `ignore` : `Bool`
+            -- Whether or not to put events to queues
         """
         # Fingerprints message, only uniques get sent
         if not server.fingerprint.is_unique_fingerprint(message): return
@@ -188,8 +198,10 @@ class GameCog(commands.Cog):
         """
         Updates header with server playercount & docker status
 
-        Parameter server: server object to reference
-        Precondition: server is a Server dataclass object
+        Parameters:
+        ---
+        `server` : `Server`
+            -- Server object to update the linked channel header for
         """
 
         if (DB.client.containers.get
@@ -205,10 +217,12 @@ class GameCog(commands.Cog):
 
         Contains formatting for channel_header, overload this to change.
 
-        Parameter server: Server object to reference
-        Precondition: server is a Server dataclass object
-
-        Parameter container_status: String of online/offline status
+        Parameters:
+        ---
+        `server` : `Server`
+            -- Server object to update the linked channel header for
+        `container_status` : `str`
+            -- current container status
         """
         ctx = self.bot.get_channel(server.cid)
         await ctx.edit(
@@ -216,7 +230,7 @@ class GameCog(commands.Cog):
                 f"{len(server.online_players)}/"
                 f"{server.player_max if server.player_max > -1 else 'ꝏ'}"
                 f" | Status: {container_status}")
-        logging.debug(f"Updated Header {server.server_name}.{server.cog_name}")
+        logging.info(f"Updated Header {server.server_name}.{server.cog_name}")
 
 #==========================Structural Methods===================================
 #   Contains filesystem add/load/create, setters/getters, and search methods
@@ -225,6 +239,7 @@ class GameCog(commands.Cog):
     def set_statistics(self, 
         statistics:dict, 
         server_name:str,
+        server:Server=None,
         request:str=None, 
         uuid:str=None, 
         playername:str=None 
@@ -250,37 +265,51 @@ class GameCog(commands.Cog):
         `request` : str
             -- Used when unsure if str is uuid or playername
         """
-        try:
-            serv = self.find_server(server_name=server_name)
-            if serv == None: return
+        # Find Server
+        serv = self.find_server(server_name=server_name)
+        if serv == None: 
+            logging.warning(f'set_statistics server is {serv}, returning')
+            return
 
-            if uuid:
-                self.servers[serv].statistics[self.find_player(
-                    server=self.servers[serv],
-                    uuid=uuid)] = statistics
-            elif playername:
-                self.servers[serv].statistics[self.find_player(
-                    server=self.servers[serv],
-                    username=playername)] = statistics
-            elif request:
-                find1 = self.find_player(
-                    server=self.servers[serv],
-                    uuid=request)
-                find2 = self.find_player(
-                    server=self.servers[serv],
-                    username=request)
-                if find1:
-                    self.servers[serv].statistics[find1] = statistics
-                elif find2:
-                    self.servers[serv].statistics[find2] = statistics
+        # Get Server
+        if server == None:
+            server = self.servers[serv]
+
+        if uuid != None:
+            player_index = self.find_player(server=server,uuid=uuid)
+            if player_index != None:
+                logging.info(f'set_statistics uuid is uuid at {player_index}, setting statistics.')
+                server.statistics[player_index] = statistics
             else:
-                raise NotImplementedError(
-                    'set_statistics called with no paramenters ya dummy')
-        except:
+                logging.error(f'set_statistics uuid not None, {player_index} found with findplayer, returning None')
+                return
+        elif playername != None:
+            player_index = self.find_player(server=server,username=playername)
+            if player_index != None:
+                
+                logging.info(f'set_statistics username is username at {player_index}, setting statistics.')
+                server.statistics[player_index] = statistics
+            else:
+                logging.error(f'set_statistics user not None, {player_index} found with findplayer, returning None')
+                return
+        elif request != None:
+            find1 = self.find_player(server=server,uuid=request)
+            find2 = self.find_player(server=server,username=request)
+            if find1 != None: 
+                logging.info(f'set_statistics request is uuid {request} at {find1}, setting statistics.')
+                server.statistics[find1] = statistics
+            elif find2 != None: 
+                logging.info(f'set_statistics request is user {request} at {find2}, setting statistics.')
+                server.statistics[find2] = statistics
+            else:
+                logging.error(f'set_statistics request {request} not found.')
+        else:
+            logging.error('set_statistics called with request, playername, and uuid == None')
             return
 
     def get_statistics(self, 
         server_name:str,
+        server:Server=None,
         request:str=None, 
         uuid:str=None, 
         playername:str=None 
@@ -304,39 +333,48 @@ class GameCog(commands.Cog):
             -- The username to get statistics of
         """
         serv = self.find_server(server_name=server_name)
-        if serv == None: return
+        if serv == None: 
+            logging.warning(f'get_statistics server is {serv}, returning')
+            return
 
-        if uuid:
-            return self.servers[serv].statistics[self.find_player(
-                server=self.servers[serv],
-                uuid=uuid)]
-        elif playername:
-            return self.servers[serv].statistics[self.find_player(
-                server=self.servers[serv],
-                username=playername)]
-        elif request:
-            find1 = self.find_player(
-                    server=self.servers[serv], 
-                    uuid=request) 
-            find2 = self.find_player(
-                    server=self.servers[serv], 
-                    username=request)
+        # Get Server
+        if server == None:
+            server = self.servers[serv]
+
+        if uuid != None:
+            found = self.find_player(server=server,uuid=uuid)
+            if found != None:
+                logging.info(f'get_statistics uuid is uuid at index {found}, returning statistics')
+                return server.statistics[found]
+            else:
+                logging.error(f'get_statistics uuid not None, index {found} found with findplayer, returning None')
+                return
+        elif playername != None:
+            found = self.find_player(server=server,username=playername)
+            if found != None:
+                logging.info(f'get_statistics user is user at index {found}, returning statistics')
+                return server.statistics[found]
+            else:
+                logging.error(f'get_statistics user not None, index {found} found with findplayer, returning None')
+                return
+        elif request != None:
+            logging.info("get_statistics requesting two findplayers")
+            find1 = self.find_player(server=server, uuid=request) 
+            find2 = self.find_player(server=server, username=request)
 
             # Switch between found uuid & username 
-            try:
-                if find1 != None:
-                    ret_val = self.servers[serv].statistics[find1]
-                elif find2 != None: 
-                    ret_val = self.servers[serv].statistics[find2]
-                else:
-                    return None
-            except IndexError:
-                raise NotImplementedError(
-                    f'Index Error in get_statistics:{find1}, {find2}')
+            if find1 != None:
+                logging.info(f'get_statistics request is uuid at index {find1}, returning statistics')
+                ret_val = server.statistics[find1]
+            elif find2 != None: 
+                logging.info(f'get_statistics request is username at index {find2}, returning statistics')
+                ret_val = server.statistics[find2]
+            else:
+                logging.warning(f'get_statistics request not found at index {find1}, index{find2}, returning none')
+                return
             return ret_val
         else:
-            raise NotImplementedError(
-                'get_statistics called with no paramenters ya dummy')
+            logging.error('get_statistics called with request, playername, and uuid == None')
 #----------------------------- Find --------------------------------------------
     def find_server(self, cid:int=None, server_name:str=None) -> int:
         """
@@ -354,17 +392,21 @@ class GameCog(commands.Cog):
         i = 0
         if cid != None:
             for server in self.servers:
-                if server.cid == cid: return i
+                if server.cid == cid: 
+                    logging.info(f"find_server found cid at index {i}")
+                    return i
                 i+=1
-            return None
         elif server_name != None:
             for server in self.servers:
-                if server.server_name == server_name: return i
+                if server.server_name == server_name: 
+                    logging.info(f"find_server found server_name at index {i}")
+                    return i
                 i+=1
-            return None
         else:
-            raise NotImplementedError(
-                'find_server called with no paramenters ya dummy')
+            logging.error('find_server cid & servername == None')
+            raise NotImplementedError('find_server called with no paramenters ya dummy')
+        logging.warning(f"find_server found no server for {server_name}:{cid}")
+        return
 
     def find_player(self, 
         server:Server=None,
@@ -388,18 +430,19 @@ class GameCog(commands.Cog):
         i = 0
         if not uuid:
             uuid = self.get_uuid(username=username)
+            logging.info(f"find_player: UUID not provided, got UUID {uuid}")
         for stat in server.statistics:
-            if uuid:
+            if uuid != None:
                 if stat.get('uuid') == uuid: 
-                    logging.debug(f"find_player found uuid at {i}")
+                    logging.info(f"find_player found uuid at {i}")
                     return i
             else:
-                if stat.get('user') == username: 
-                    logging.debug(f"find_player found user at {i}")
+                if stat.get('username') == username: 
+                    logging.info(f"find_player found username at {i}")
                     return i
             i+=1
-        logging.debug("find_player found no player")
-        return None
+        logging.warning("find_player found no player")
+        return
 #----------------------------- Filesystem --------------------------------------
     def load_servers(self, bot=None, cog_version:str=None) -> list:
         """
@@ -429,7 +472,7 @@ class GameCog(commands.Cog):
                 server.online_players = pl if pl else []
                 
                 server_list.append(server)
-                logging.info(f"loaded {server.server_name} with {len(server.online_players)}/{server.player_max} players.")
+                logging.critical(f"loaded {server.server_name} with {len(server.online_players)}/{server.player_max} players.")
         return server_list
 
     def load_statistics(self, cog_name:str, server_name:str) -> list:
@@ -448,11 +491,12 @@ class GameCog(commands.Cog):
             # Ensure directory existance
             path = f'../../data/servers/{cog_name}/{server_name}/'
             if not os.path.exists(path):
+                logging.info(f"load_statistics creating file structure {path}")
                 os.makedirs(path)
 
             # For file in folder
             for item in os.listdir(path):
-                logging.debug(f"Loading item: {item}")
+                logging.info(f"load_statistics loading item: {item}")
                 with open(path+item) as f:
                     stats.append(json.load(f))
         except FileNotFoundError:
@@ -478,12 +522,14 @@ class GameCog(commands.Cog):
             leaves:[]
         }
 
-        Parameter server: object to reference when creating & saving statistics
-        Preconditons: server is a Server dataclass object
-
-        Parameter username: username to assign to statistics (Used to find)
-
-        Parameter uuid: uuid to assign to statistics (Used to find & update)
+        Parameters:
+        ---
+        `server` : `Server`
+            -- object to reference when creating & saving statistics
+        `username` : `str`
+            -- username to assign to statistics (Used to find)
+        `uuid` : `str`
+            -- uuid to assign to statistics (Used to find & update)
         """
         # Build Dict
         dict = {
@@ -502,17 +548,13 @@ class GameCog(commands.Cog):
             f"{server.server_name}/{filename}.json")
 
         # Save dict to file
-        print(f"Adding player: {username} at {path}")
-        with open(path, 'w+') as f:
+        logging.critical(f"Adding player: {username} at {path}")
+        with open(path, 'w') as f:
             json.dump(dict, f, indent=2)
 
         # Save dict to cog
-        try:
-            self.servers[self.find_server(
-                server_name=server.server_name)].statistics.append(dict)
-        except:
-            raise NotImplementedError(
-                "Create Statistics: Called without server")
+        logging.info(f"create_statistics adding: {dict}")
+        server.statistics.append(dict)
 
     def save_statistics(self, 
         server_name:str,
@@ -543,59 +585,74 @@ class GameCog(commands.Cog):
         `server_index` : `int`
             -- index of server to save to
         ''' 
+        logging.info(f"Saving {request}({username}:{uuid}) to {server_name}")
+
         # Get indexes if not present
         if server_index == None:
             server_index = self.find_server(server_name=server_name)
             if server_index == None:
+                logging.error(f"server_index not found, throwing exception.")
                 raise NotImplementedError(f"sindex:{server_index}, sname:{server_name}")
 
         # Set Server
         if server == None:
             server = self.servers[server_index]
             if server == None:
-                raise NotImplementedError()#
+                logging.error(f"server is None, returning, any unsaved data may be lost")
+                return
 
         # Request Handling
-        find1 = self.find_player(server=server, uuid=request) 
-        find2 = self.find_player(server=server, username=request)
+        if uuid != None:
+            found = self.find_player(server=server, uuid=uuid) 
+            if found != None:
+                index = found
+            else:
+                logging.error(f"save_statistics uuid not None, {found} found with findplayer, returning before saving")
+                return
+        elif username != None:
+            found = self.find_player(server=server, username=username) 
+            if found != None:
+                index = found
+            else:
+                logging.error(f"save_statistics user not None, {found} found with findplayer, returning before saving")
+                return
+        elif request != None:
+            find1 = self.find_player(server=server, uuid=request) 
+            find2 = self.find_player(server=server, username=request)
 
-        if find1 != None:
-            # Request is a existing UUID
-            uuid = request
-            index = find1
-        elif find2 != None:
-            # Request is an existing Username
-            username = request
-            index = find2
-        else:
-            # Request is neither
-            return None
+            if find1 != None:
+                # Request is a existing UUID
+                uuid = request
+                index = find1
+            elif find2 != None:
+                # Request is an existing Username
+                username = request
+                index = find2
+            else:
+                # Request is neither
+                logging.error(f"save_statistics request not None, {find1},{find2} found with findplayer, returning before saving")
+                return
 
         # Determine filename
         if not uuid:
             uuid = self.get_uuid(username=username)
         filename = uuid if uuid != None else username
+        logging.info(f'save_statistics evaluated filename: {filename}')
 
         # Raise exception if missing uuid or username
         if filename == None:
-            raise NotImplementedError(
-                f"{server.server_name}.{server.cog_name} Error: "
-                " called without username or uuid ya dummy.")
+            logging.error(f"{server.server_name}.{server.cog_name}: filename is None, returning before saving.")
+            return
 
         # Dumps json to path, otherwise throws exception
         try:
             path = (f'../../data/servers/{server.cog_name}'
                     f'/{server.server_name}/{filename}.json')
             with open(path, 'w') as f:
-                     json.dump(
-                         self.servers[server_index].statistics[index], 
-                         f, 
-                         indent = 2)
-                     logging.debug(f"Successfully Saved {path}")
+                json.dump(server.statistics[index], f, indent = 2)
+            logging.info(f"Successfully saved {server.server_name} {path}")
         except FileNotFoundError:
-            raise NotImplementedError(
-                f"{server.server_name}.{server.cog_name} Error: {filename}"
-                " does not exist in current filestructure")
+            logging.error(f"{server.server_name}.{server.cog_name}: filename does not exist")
 
 #============================Core Methods=======================================
 # Contains scheduled tasks, boilerplate read/send, queue handling
@@ -644,11 +701,12 @@ class GameCog(commands.Cog):
         # Send Command, and decipher tuple
         resp_bytes = container.exec_run(command)
         resp_str = resp_bytes[1].decode(encoding="utf-8", errors="ignore")
+        logging.info(f"Sent {command} to {server.server_name}: {resp_str}")
 
         # Logging
         if log:
-            logging.info(f"Sent {command} to {server.server_name}.{server.cog_name}")
-            logging.info(f"Response: {resp_str}")
+            logging.critical(f"Sent {command} to {server.server_name}.{server.cog_name}")
+            logging.critical(f"Response: {resp_str}")
         return resp_str
 
 #------------------------- Queue Handlers --------------------------------------
@@ -672,65 +730,69 @@ class GameCog(commands.Cog):
                 # Event Type (Join/Leave)
                 temp = x.get('type')
                 if temp == None: 
-                    raise NotImplementedError(
-                        f"handle_connect_queue none 'type': {x}")
+                    logging.error(f"connect_queue type None from {x}, skipping dictionary")
+                    continue
                 join = True if temp == MessageType.JOIN else False
-                logging.debug(f'handle_connect_queue join={join}')
                 
                 # Find Player Index
                 user = x.get('username')
                 uuid = self.get_uuid(user)
+                logging.info(f'connect_queue user={user}, uuid={uuid}, join={join}')
 
                 # Get index of player -- adding player if not present
                 player_index = self.find_player(server=server, username=user, uuid=uuid)
-                logging.debug(f'handle_connect_queue playerindex={player_index}')
+                logging.info(f'handle_connect_queue playerindex={player_index}')
                 if player_index == None:
-                    logging.debug(f'handle_connect_queue creating user')
-                    if uuid:
-                        self.create_statistics(server=server,username=user, uuid=uuid)
-                    else:
-                        self.create_statistics(server=server,username=user)
-                    player_index = self.find_player(username=user,server=server, uuid=uuid)
-                    logging.debug(f'handle_connect_queue playerindex={player_index}')
+                    logging.info(f'handle_connect_queue creating user')
+                    self.create_statistics(server=server, username=user, uuid=uuid)
+
+                    # Get new player_index
+                    player_index = self.find_player(server=server, username=user, uuid=uuid)
+                    logging.info(f'handle_connect_queue new playerindex is {player_index}')
                     if player_index == None:
+                        logging.critical(f'New playerindex is {player_index}, skipping entry, filesystem likely compromised.')
                         continue
                 
                 # Add Connect Events w/ fixing logic
                 recentest_is_join = analytics_lib.is_recentest_join(statistics=server.statistics[player_index])
-                logging.debug(f'handle_connect_queue recentest_is_join={recentest_is_join}')
+                logging.info(f'handle_connect_queue joinType, recentest_is_join ={join},{recentest_is_join}')
                 # Based on recentest is join, prevents double joins/leaves which would otherwise mess up calculations later
                 # If Adding Join and the most recent entry is a join, remove previous join
                 if join == True:
                     if recentest_is_join == True:
-                        logging.debug(f'handle_connect_queue: popping {user} join')
+                        logging.info(f'handle_connect_queue: popping {user} join')
                         server.statistics[player_index]['joins'].pop()
-                    logging.debug(f'handle_connect_queue: adding {user} join')
+                    logging.info(f'handle_connect_queue: adding {user} join')
                     server.statistics[player_index]['joins'].append(
                         str(x.get('time')))
 
                 # If adding Leave and the most recent entry is a leave, ignore adding leave
                 elif join == False: 
                     if recentest_is_join == True:
-                        logging.debug(f'handle_connect_queue: adding {user} leave')
+                        logging.info(f'handle_connect_queue: adding {user} leave')
                         server.statistics[player_index]['leaves'].append(
                             str(x.get('time')))
 
                 # Add modification to savelist to later be saved
-                save_list.append({'index':player_index,'uuid':uuid,'user':user})
+                save_dict = {'index':player_index,'uuid':uuid,'user':user}
+                logging.info(f"adding dict to file_save list: {save_dict}")
+                save_list.append(save_dict)
 
                 # Online List Logging
                 if join and not (x['username'] in server.online_players):
+                    logging.info(f'Adding {x["username"]} to online players')
                     server.online_players.append(x['username'])
-                elif (not join) and (x['username'] in server.online_players): 
+                elif (not join) and (x['username'] in server.online_players):
+                    logging.info(f'Removing {x["username"]} from online players') 
                     server.online_players.remove(x['username'])
         except queue.Empty:
-            logging.debug(f'{server.server_name} queue.Empty exception')
+            #logging.info(f'{server.server_name} queue.Empty exception')
 
             # Update Header (Without hanging up execution, as I believe headers can only be updated so frequently)
             if save_list:
                 loop = asyncio.get_event_loop()
                 loop.create_task(self.header_update(server=server))
-                logging.debug(f'Scheduled header_update for {server.server_name}')
+                logging.info(f'Scheduled header_update for {server.server_name}')
 
             # Save Statistics
             for index in save_list:
@@ -755,6 +817,9 @@ class GameCog(commands.Cog):
             self.read(server)
             ctx = self.bot.get_channel(server.cid)
 
+            # Connect Queue
+            await self.handle_connect_queue(server=server)
+            
             # Message Queue
             try:
                 while True:
@@ -762,8 +827,8 @@ class GameCog(commands.Cog):
             except queue.Empty:
                 await asyncio.sleep(0)
 
-            # Connect Queue
-            await self.handle_connect_queue(server=server)
+            
+            
     @pass_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 

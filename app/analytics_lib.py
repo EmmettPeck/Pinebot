@@ -5,6 +5,7 @@ By: Emmett Peck
 A group of handling datetime & connection logging, playtime calculating functions.
 """
 from datetime import datetime, timedelta
+import logging
 from database import DB
 
 # DateTime Stuff ------------------------------------------------------------------------------------------------
@@ -66,9 +67,9 @@ def is_recentest_join(statistics:dict) -> bool:
         elif(len(joinList) == 0) and (len(leaveList) == 0):
             return False
         else:
-            raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
+            raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.now()}")
     except IndexError:
-        raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.utcnow()}")
+        raise NotImplementedError(f" Server:{__name__}, {len(joinList)} joins, {len(leaveList)} leaves at {datetime.now()}")
 
 # Playtime -----------------------------------------------------------------------------------------------------------------------------------------------
 def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> datetime:
@@ -86,7 +87,7 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
         if (c_index <= len(statistics.get('leaveList'))) and (len(statistics.get('leaveList')) == len(statistics.get('leaveList'))): return total
     except TypeError: pass # Catch for TypeError: object of type 'NoneType' has no len()
 
-    # Ensure joinList exists, use firstJoin to load/save total
+    # Ensure joinList exists, use firstJoin to load/save total TODO UNSAFE ACCESSES
     joinList, leaveList = get_connect_dt_list(statistics=statistics)
     to_return = {'servername': server_name,'last_connected': leaveList[-1],'playtime': None,'first_join':joinList[0]}
     if len(joinList) == 0: return None
@@ -112,20 +113,23 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
     # Set Statistics
     statistics['total_playtime'] = str(total+joinList[0])
     statistics['calculated_index'] = c_index
+    logging.info("calculate_playtime: Pre set_statistics")
     cog.set_statistics(statistics=statistics, server_name=server_name, request=request)
     to_return['playtime'] = total 
 
     # Save only if incremented
     if c_index > pre_index:
+        logging.info("calculate_playtime: Pre save_statistics")
         cog.save_statistics(server_name=server_name, request=request)
 
     # Playtime for online players -- If there's 1 more join than leaves
     try:
         if (len(joinList) == len(leaveList) + 1) or (joinList and not leaveList):
-            now = datetime.utcnow()
+            now = datetime.now()
             to_return['playtime'] = total + now - joinList[c_index+1]
     except TypeError: # Catch 'NoneType'
         pass
+    logging.info(f"calculate_playtime: {to_return}")
     return to_return
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------
 def handle_playtime(bot, request:str, server_name:str='total'):
@@ -144,7 +148,9 @@ def handle_playtime(bot, request:str, server_name:str='total'):
         for cog in DB.get_game_cogs():
             current = bot.get_cog(cog.split('.',1)[1].title())
             if current == None: continue
+            logging.info("Pre get_statistics")
             stats = current.get_statistics(server_name=server_name, request=request)
+            logging.info(f"handle_playtime: from server_name:{server_name} request:{request} got statistics {stats}")
 
             # Ensure servername
             if stats:
