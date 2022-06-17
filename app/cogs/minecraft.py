@@ -173,11 +173,11 @@ class Minecraft(GameCog):
             elif entry.find(" joined the game") >= 0: 
                 msg = "joined the game"
                 user = entry.split(' ',1)[0]
-                post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.lighter_gray())
+                post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_gold())
             elif entry.find(" left the game") >= 0:
                 msg = "left the game"
                 user = entry.split(' ',1)[0]
-                post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.lighter_gray())
+                post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_gold())
 
             # Achievement Detection ------------------------------------------------------------------------------
             elif entry.find("has made the advancement") >= 0:

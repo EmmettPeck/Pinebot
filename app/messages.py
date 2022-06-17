@@ -42,7 +42,7 @@ class MessageType(Enum):
 def get_type_icon(type):
     """Returns corresponding icon to msgtype enumerable"""
     if (type == MessageType.JOIN) or (type == MessageType.LEAVE):
-        type_uni = "🚪"
+        type_uni = "⚙️"
     elif (type == MessageType.MSG):
         type_uni = "💬"
     elif (type == MessageType.DEATH):
