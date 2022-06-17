@@ -38,15 +38,21 @@ class Minecraft(GameCog):
             await self.bot.send_message(ctx.message.channel, "You do not have the necessary roles.")
 
     # Send ---------------------------------------------------------------------
-    @commands.command(name='sendcmd', help="Usage: >send <arg>. Requires administrator permissions.", brief="Sends command to server.")
+    @commands.command(name='sendcmd', help="Usage: >sendcmd <arg>. Requires administrator permissions.", brief="Sends command to server.")
     @has_permissions(administrator=True)
     async def sendcmd(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
-        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command=mess, logging=True)
+        server = self.servers[self.find_server(ctx.channel.id)]
+        logging.info(f"{ctx.author} sendcmd {mess} to {server.server_name}")
+        response = self.send(server=server, command=mess, log=True)
+        logging.info(response)
         if response:
             await ctx.send(response)
+            return
         else:
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
+            return
+
     @sendcmd.error
     async def send_error(self, error, ctx):
         if isinstance(error, CheckFailure):
@@ -83,7 +89,9 @@ class Minecraft(GameCog):
         Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
         """
         filtered = command.replace("'", "'\\''") 
-        super().send(server=server,command=f"rcon-cli '{filtered}'", log=log, filter=False)
+        temp = super().send(server=server,command=f"rcon-cli '/{filtered}'", log=log, filter=False)
+        logging.info(f"Minecraft send return: {temp}")
+        return temp
 
     def send_message(self, server:Server, message:str):
         '''
@@ -99,7 +107,7 @@ class Minecraft(GameCog):
 
         """
         player_list = []
-        response = self.send(server=server,command="/list")
+        response = self.send(server=server,command="list")
 
         # Response Catch
         if not response:
