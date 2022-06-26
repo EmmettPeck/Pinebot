@@ -14,17 +14,16 @@ from analytics_lib import td_format
 
 def embed_server_list(reference:discord.Member, input:list):
     """
-    Returns: A formatted serverlist embed object
+    Returns: A formatted serverlist embed object sorted by cog.
 
     Parameter reference: Discord member that requested playtime
-    TODO Sort by cog
     """
     version_list = []
     # Build Embed
     embed = discord.Embed(
         title = 'Server List',
         description='Current servers organized by game.\n',
-        timestamp=datetime.now(),
+        timestamp=datetime.utcnow(),
         color = discord.Color.dark_gold())
 
     # Sort input by version
@@ -96,7 +95,7 @@ def embed_playtime(
         title=f"Playtime {username}",
         description=
             'Total on Pineserver: ``⌛ '+td_format(total_playtime)+'``\n\u200b',
-        timestamp=datetime.now(),
+        timestamp=datetime.utcnow(),
         color=discord.Color.dark_purple())
 
     # Add Top Server Dicts
@@ -108,7 +107,7 @@ def embed_playtime(
 
         embed.add_field(
             name=f"🌲 {server_name}", 
-            value=f"``⌛ {td_format(playtime)}`` since ``📆 {first_join}``", 
+            value=f"``⌛ {td_format(playtime)}``\nFirst Played: `📆`<t:{int(round(first_join.timestamp()))}:d>", 
             inline=False)
 
     # Set Requested by
@@ -126,7 +125,7 @@ def embed_build(message:str, reference:discord.Member):
     embed = discord.Embed(
         title=f"📄 {message}",
         color=discord.Color.dark_gold(),
-        timestamp=datetime.now())
+        timestamp=datetime.utcnow())
     # Set User Reference
     embed.set_footer(
         text='Requested by: '+reference.display_name, 
