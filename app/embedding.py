@@ -55,7 +55,7 @@ def embed_server_list(reference:discord.Member, input:list):
         
             embed.add_field(
                 name=f"🌲 {sname.title()}", 
-                value=f'**IP: **``{sip}`` **| {sdesc}**\n', 
+                value=f'IP: ``{sip}`` | {sdesc}\n', 
                 inline=False)
     
     embed.set_footer(
@@ -107,7 +107,7 @@ def embed_playtime(
 
         embed.add_field(
             name=f"🌲 {server_name}", 
-            value=f"``⌛ {td_format(playtime)}``\nFirst Played: `📆`<t:{int(round(first_join.timestamp()))}:d>", 
+            value=f"``⌛ {td_format(playtime)}`` since `📆`<t:{int(round(first_join.timestamp()))}:d>", 
             inline=False)
 
     # Set Requested by
