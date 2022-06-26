@@ -61,7 +61,7 @@ class Minecraft(GameCog):
     # List ---------------------------------------------------------------------
     @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
     async def list(self, ctx):
-        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command="/list")
+        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command="list")
         
         await ctx.message.delete()
         if response:
@@ -173,11 +173,11 @@ class Minecraft(GameCog):
             elif entry.find(" joined the game") >= 0: 
                 msg = "joined the game"
                 user = entry.split(' ',1)[0]
-                post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_gold())
+                post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_teal())
             elif entry.find(" left the game") >= 0:
                 msg = "left the game"
                 user = entry.split(' ',1)[0]
-                post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_gold())
+                post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_teal())
 
             # Achievement Detection ------------------------------------------------------------------------------
             elif entry.find("has made the advancement") >= 0:

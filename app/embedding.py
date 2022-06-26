@@ -24,8 +24,8 @@ def embed_server_list(reference:discord.Member, input:list):
     embed = discord.Embed(
         title = 'Server List',
         description='Current servers organized by game.\n',
-        timestamp=datetime.utcnow(),
-        color = discord.Color.dark_blue())
+        timestamp=datetime.now(),
+        color = discord.Color.dark_gold())
 
     # Sort input by version
     for i in range(len(input)):
@@ -56,7 +56,7 @@ def embed_server_list(reference:discord.Member, input:list):
         
             embed.add_field(
                 name=f"🌲 {sname.title()}", 
-                value=f'IP: ``{sip}`` | {sdesc}\n', 
+                value=f'**IP: **``{sip}`` **| {sdesc}**\n', 
                 inline=False)
     
     embed.set_footer(
@@ -125,7 +125,7 @@ def embed_build(message:str, reference:discord.Member):
     # Build Embed
     embed = discord.Embed(
         title=f"📄 {message}",
-        color=discord.Color.blurple(),
+        color=discord.Color.dark_gold(),
         timestamp=datetime.now())
     # Set User Reference
     embed.set_footer(

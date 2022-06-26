@@ -6,7 +6,7 @@ Log and filter out past 100 non-unique fingerprints per class
 
 import json
 import hashlib
-from database import DB
+import logging
 
 class FingerPrints:
 
@@ -53,7 +53,10 @@ class FingerPrints:
             database_list.insert(0, fingerprint)
             # Pop elements over length to keep the list small
             if len(database_list) > length-1: 
-                database_list.pop(length)
+                try:
+                    database_list.pop(length)
+                except IndexError:
+                    logging.error(f"Pop index out of range {string}")
             self.save_fingerprintDB()
             return True
         else:
