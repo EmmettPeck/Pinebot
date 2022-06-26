@@ -7,11 +7,12 @@
 from itertools import cycle
 from datetime import datetime
 import logging
+from random import randint
 import discord
 from discord.ext import tasks, commands
 
 # TODO Add more presence options.cycle
-disturbing_songs = ["a podcast ☕","Bot Club (feat. Lil Botty)","Gymnopédie No. 1", "Kill EVERYBODY","Get Into It (Yuh)","Ex Machina (Original Motion Picture Soundtrack)","Have Mercy"]
+disturbing_songs = ["a podcast ☕","Bot Club (feat. Lil Botty)","Gymnopédie No. 1", "Kill EVERYBODY","Get Into It (Yuh)","Ex Machina (Original Motion Picture Soundtrack)","Have Mercy",">help", "The Third Monke at Noah's Ark","The Art of Monke"]
 cycle_songs = cycle(disturbing_songs)
 
 class Presence(commands.Cog):
@@ -38,10 +39,13 @@ class Presence(commands.Cog):
             _activity = discord.Activity(type = discord.ActivityType.watching, name = 'the night roll by 💤')
             _status = discord.Status.idle
         elif hour >= 7 and hour < 8:
-            _activity = discord.Activity(type = discord.ActivityType.listening, name = next(cycle_songs))
+            # Grab a "random" playlist song
+            for i in range(randint(1,10)):
+                _name = next(cycle_songs)
+            _activity = discord.Activity(type = discord.ActivityType.listening, name = _name)
             _status = discord.Status.online
         elif hour >= 8 and hour < 17:
-            _activity = discord.Activity()
+            _activity = discord.Activity(type = discord.ActivityType.playing, name = '>help')
             _status = discord.Status.idle
         elif hour >= 21 and hour < 22:
             _activity = discord.Activity(type = discord.ActivityType.watching, name = 'you')

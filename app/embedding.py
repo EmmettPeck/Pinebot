@@ -55,7 +55,7 @@ def embed_server_list(reference:discord.Member, input:list):
         
             embed.add_field(
                 name=f"🌲 {sname.title()}", 
-                value=f'**IP: **``{sip}`` **| {sdesc}**\n', 
+                value=f'IP: ``{sip}`` | {sdesc}\n', 
                 inline=False)
     
     embed.set_footer(
