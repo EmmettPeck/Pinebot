@@ -11,6 +11,7 @@ from random import randint
 import discord
 from discord.ext import tasks, commands
 
+# TODO Add more presence options.cycle
 disturbing_songs = ["a podcast ☕","Bot Club (feat. Lil Botty)","Gymnopédie No. 1", "Kill EVERYBODY","Get Into It (Yuh)","Ex Machina (Original Motion Picture Soundtrack)","Have Mercy",">help", "The Third Monke at Noah's Ark","The Art of Monke"]
 cycle_songs = cycle(disturbing_songs)
 
