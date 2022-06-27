@@ -16,7 +16,6 @@ from discord.ext import commands
 import analytics_lib
 from embedding import embed_build, embed_playtime
 
-
 class Analytics(commands.Cog):
 
     def __init__(self, bot):
