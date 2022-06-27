@@ -16,15 +16,15 @@ class FingerPrints:
     
     def load_fingerprintDB(self):
         try:
-            with open(rf"data/hash_{self.name}.json", 'r') as read_file:
+            with open(rf"data/hashes/hash_{self.name}.json", 'r') as read_file:
                 return json.load(read_file)
         except FileNotFoundError:
-            with open(rf"data/hash_{self.name}.json", 'w+') as write_file:
+            with open(rf"data/hashes/hash_{self.name}.json", 'w+') as write_file:
                 json.dump([], write_file, indent = 2)
             return self.load_fingerprintDB()
     
     def save_fingerprintDB(self):
-        with open(rf"data/hash_{self.name}.json", 'w') as write_file:
+        with open(rf"data/hashes/hash_{self.name}.json", 'w') as write_file:
             json.dump(self.fingerprintDB, write_file, indent = 2)
     
     def get_hash_int(self, instr):
