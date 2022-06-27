@@ -1,39 +1,41 @@
 # Pinebot
 
-A simple discord bot to whitelist players via discord.
+Pinebot is a passion project I started to bring together my many gameservers into one place.
+For a long time I wondered about creating an environment in discord that showed when friends were online. Additionally, whitelisting players from my phone was desirable, since I'm not always at home. This small project quickly grew in scope as I slowly realized there was a lot I could do with
+an integration of systems like this, and this is the manifestation of that. 
 
-Apart of a movement to transfer mc.nikesexparty.net to mc.pineserver.net, and provide a fully accesible archive of major servers hosted.
 
-> Vanilla 2021+,
-> Vanilla 2019,
-> Vanilla 2018,
-> Others
+# Features
+## Playtime Logging
+If you played, Pinebot knows when and for how long. Makes great statistics, and to know when your friend isn't taking a breakup too well.
 
-This is to be achieved using [itzg's docker minecraft server](https://github.com/itzg/docker-minecraft-server) and the autopause option.
+## Remote Console Access
+Securely send commands from the comfort of your own discord server. Using server permissions, assign certain commands to certain roles on the server.
 
----
+## Account Link
+Linked accounts allow for totaling playtime of a user, automating whitelisting across a server network, and more.
+Currently not implemented, features that depend on Account Link are to be finalized.
 
-## Launch Event
+# Commands
+- `>playtime` reports playtime for user on server, and the first day online. Requires having linked accounts.
+    - With a  `<user>` arg, lists playtime of that discord user, listing their top 3 played on servers and a total playtime. Requires linked accounts.
+    - With a `<server>` arg, lists playtime of a username or uuid on that server. Works with unlinked accounts
 
-- A small gameplay event on Vanilla 2021+ which begins with PineBot "assimilating" the server away from 1917 roleplay. Players fight a more difficult ender dragon with additional phases/dangers, including a phase which spawns agroed enderman with special drops.
-- Server Icon is changed to a purplish corrupted version of the future Pineserver Icon
-- After an amount of time, PineBot drops an invite link in the discord channel, ending the event.
-  
----
-### Discord Channel
+# Supported Games
 
-- Update code comments to be more concise and legible/organized
-- "Start Here" Channel Minecraft
-- Permission testing
-- Moderator Role
-- Moderator only chat which outlines perfered actions of moderators around innapropriate images/conversations
-- Moderator chat allows approving whitelist applications to servers in an embedded style text formatting w/ reactions
-- Rules page & Chat filtering (Via discord if possible)
-- Icons
+## Minecraft
+Should support all vanilla minecraft versions (untested), though modded versions may require a custom cog to be made for chat filtering.
+This cog is built to use [itzg's docker minecraft server](https://github.com/itzg/docker-minecraft-server). 
 
-### Pinecone
+### Subcommands
+#### User
+- `>list` lists online players
+#### Admin
+- `>sendcmd <>` sends command to corresponding channel
+- `>whitelist <playername>` whitelists player on that server
 
-- Implement autobackups
-- Manage diskspace issues
-- Auto sync backups to archive drives on main PC?
-  - Sync Onedrive backups to archive drives?
+## Factorio
+- To be finalized
+
+## Starbound
+- To be implemented
