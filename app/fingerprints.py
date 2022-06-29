@@ -7,6 +7,7 @@ Log and filter out past 100 non-unique fingerprints per class
 import json
 import hashlib
 import logging
+import os
 
 class FingerPrints:
 
@@ -16,6 +17,13 @@ class FingerPrints:
     
     def load_fingerprintDB(self):
         try:
+            # Create Path if it doesn't exist (Otherwise will throw exception)
+            path = f'data/hashes/'
+            if not os.path.exists(path):
+                logging.info(f"fingerprints creating file structure {path}")
+                os.makedirs(path)
+                
+            # Load Fingerprints
             with open(rf"data/hashes/hash_{self.name}.json", 'r') as read_file:
                 return json.load(read_file)
         except FileNotFoundError:

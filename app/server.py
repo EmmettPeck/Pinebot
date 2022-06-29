@@ -22,6 +22,7 @@ class Server:
     connect_queue: queue.Queue = None   # Connect Queue
     message_queue: queue.Queue = None   # Message Queue
     player_max: int = -1                # Max Players (Default -1 for ∞)
+    link_keys: list = []                # Codes to check against new msgs
 
     def __post_init__(self):
         self.connect_queue = queue.Queue()  # Connect Queue

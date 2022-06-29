@@ -117,19 +117,25 @@ def embed_playtime(
     return embed
 
 
-def embed_build(message:str, reference:discord.Member):
+def embed_build(message:str, description:str=None, reference:discord.Member=None, icon='📄'):
     """
     Returns: A formatted message by reference
     """
     # Build Embed
     embed = discord.Embed(
-        title=f"📄 {message}",
+        title=f"{icon} {message}",
         color=discord.Color.dark_gold(),
         timestamp=datetime.utcnow())
+
+    # Description
+    if description:
+        embed.description = description
+
     # Set User Reference
-    embed.set_footer(
-        text='Requested by: '+reference.display_name, 
-        icon_url= reference.avatar_url)
+    if reference:
+        embed.set_footer(
+            text='Requested by: '+reference.display_name, 
+            icon_url= reference.avatar_url)
     return embed
 
 def embed_message(msg_dict):
