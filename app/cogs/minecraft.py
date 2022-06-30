@@ -83,6 +83,9 @@ class Minecraft(GameCog):
         uuid = converter.get_uuid()
         return uuid
 
+    def get_username_fixes(self) -> tuple:
+        return ("<",">")
+
     def send(self, server:Server, command:str, log=False) -> list: 
         """
         OVERLOAD: 
@@ -167,7 +170,7 @@ class Minecraft(GameCog):
             if (entry[0] == '<') and ('<' and '>' in entry):
                 msg  = split_first(entry,'> ')[1]
                 user = get_between(entry, '<','>')
-                post = get_msg_dict(f'<{user}>', msg, MessageType.MSG, discord.Color.green())
+                post = get_msg_dict(user, msg, MessageType.MSG, discord.Color.green())
 
             # Join/Leave Detection by searching for "joined the game." and "left the game."------------------------
             elif entry.find(" joined the game") >= 0: 

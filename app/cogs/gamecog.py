@@ -15,6 +15,7 @@ Version: May 27th, 2022
 """
 
 import asyncio
+import datetime
 import json
 import os
 import queue
@@ -102,6 +103,14 @@ class GameCog(commands.Cog):
         """
 
         pass
+
+    def get_username_fixes(self) -> tuple:
+        """
+        Returns tuple of chat message prefix and suffix for usernames
+
+        To be overloaded by GameCog children.
+        """
+        return ("","")
 
     def is_player_online(self, server:Server, playername:str = None) -> bool:
         """
@@ -823,7 +832,24 @@ class GameCog(commands.Cog):
             # Message Queue
             try:
                 while True:
-                    await ctx.send(embed=embed_message(server.message_queue.get_nowait()))
+                    message = server.message_queue.get_nowait()
+
+                    # link-key checking (Account Link)
+                    for key in server.link_keys:
+                        if message.get('username') == key.get('name'):
+                            if message.get('message') == key.get('keyID'):
+                                # TODO Confirm Key w/ account handler
+                                
+                        # Throw out old keys
+                        if datetime.utcnow() >= key.get('time'):
+                            logging.debug(f"link-key removing old key {key} at {datetime.utcnow()}")
+                            server.link_keys.remove(key)
+                            
+
+                    # Message Handling
+                    await ctx.send(embed=embed_message(
+                        msg_dict=message,
+                        username_fixes=self.get_username_fixes()))
             except queue.Empty:
                 await asyncio.sleep(0)
 

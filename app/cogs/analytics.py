@@ -82,20 +82,25 @@ class Analytics(commands.Cog):
         
         Adds a link-key dict (Username, keyID, Timestamp) to server cog to be listened for.
         """
+        key_username = link_key.get('username')
+
         for cog in DB.get_game_cogs():
                 current = self.bot.get_cog(cog.split('.',1)[1].title())
                 if current == None: continue
 
-                # Loop searching for matching server cid
+                # Loop searching for matching server cid, ensure player is on server
                 for server in current.servers:
                     if server.cid == cid:
-                        # Ensure player exists on server (return False case)
-                            # TODO
-                        # Add link key
-                        server.link_keys.append(link_key)
-                        return True
+                        for player in server.statistics:
+                            if key_username is player.get('username'):
+                                server.link_keys.append(link_key)
+                                logging.debug(f"add_link_key: adding {link_key} to {cid}.")
+                                return True
+                        logging.debug(f"add_link_key: player not found. {link_key}")
+                        return False
 
         logging.warning(f"add_link_key: No matching server to {cid} found.")
+        return None
 
     # Account Link -------------------------------------------------------------
 
@@ -131,17 +136,23 @@ class Analytics(commands.Cog):
         
         # Attempt to add link-key
         result = self.add_link_key(cid=ctx.id,
-            link_key={'name':name,'keyID':code,'time':datetime.utcnow()})
+            link_key={'username':name,'keyID':code,'time':datetime.utcnow()+datetime.timedelta(minutes=5)})
 
-        # DM code to user
-        if result == True: # If succesfully added, inform player
+        # Direct Message code to user if successfully added
+        if result == True: 
             logging.info(f"link command: {name} added link-key `{code}` to link to {ctx.author.name}")
             await ctx.author.send(embed=embed_build(
                 message=f"Your link-key is `{code}`",
                 description=f"Send this in {ctx.channel.name}'s server chat to link your account."))
-        elif result == False: # If unsuccessful, inform player
+        
+        # If unsuccessful, inform player
+        elif result == False: 
             logging.info(f"link command: {name} not recognized.")
-            await ctx.send(embed=embed_build(message=f"Player {name} is not recognized on Pineserver."description="Usernames are Case-Sensitive. Have they played on a server?"))
+            await ctx.send(embed=embed_build(
+                message=f"Player {name} is not recognized on Pineserver.",
+                description="Usernames are Case-Sensitive. Have they played on a server?"))
+        
+        # Error Cases
         elif result == None:
             logging.error("link command: Server Not Found.")
         else:

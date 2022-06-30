@@ -7,7 +7,7 @@ Version: May 28th, 2022
 
 import discord
 
-from messages import get_type_icon, split_first
+from messages import get_type_icon, split_first, MessageType
 from datetime import datetime
 from analytics_lib import td_format
 
@@ -138,9 +138,30 @@ def embed_build(message:str, description:str=None, reference:discord.Member=None
             icon_url= reference.avatar_url)
     return embed
 
-def embed_message(msg_dict):
-    return discord.Embed(
-        title=f"{get_type_icon(msg_dict.get('type'))}"
-            f" {msg_dict.get('username')} {msg_dict.get('message')}",
-        color = msg_dict.get("color"))
+def embed_message(msg_dict:dict, username_fixes:tuple=("",""), fix_type:MessageType=MessageType.MSG):
+    """
+    Returns an embedded object of given message dictionary.
+
+    Parameters:
+    ---
+    `msg_dict`:`dict`
+        - A dict with keys `username`,`type`,`message`,`color`,`time`
+
+    `fix_type`:`MessageType`
+        - The message types to apply username fixes to. Set to `None` for always.
+        
+    `username_fixes`:`tuple`
+        - tuple of desired prefix & suffix for messages. Defaults to `("","")`
+    """
+    
+    mtype = msg_dict.get('type')
+    username = msg_dict.get('username')
+    message = msg_dict.get('message')
+    color = msg_dict.get("color")
+
+    if (mtype == fix_type) or (mtype is None):
+        username = username_fixes[0]+username+username_fixes[1]
+    
+    return discord.Embed(title=f"{get_type_icon(mtype)} {username} {message}",
+        color = color)
     

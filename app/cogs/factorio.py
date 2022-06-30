@@ -16,6 +16,9 @@ class Factorio(GameCog):
     def get_version(self) -> str:
         return "Factorio"
 
+    def get_username_fixes(self) -> tuple:
+        return ("<",">")
+
     def filter(self, server:Server, message:str, ignore=False):
         """
         OVERLOAD: Factorio:Latest
@@ -32,7 +35,7 @@ class Factorio(GameCog):
                 type = MessageType.MSG
                 name = split_first(after_brackets,':')[0].strip()
                 msg = split_first(after_brackets,':')[1]
-                post =  get_msg_dict(f'<{name}>', msg, type, discord.Color.dark_gold())
+                post =  get_msg_dict(name, msg, type, discord.Color.dark_gold())
             # Join
             elif in_brackets == "JOIN":
                 type = MessageType.JOIN
