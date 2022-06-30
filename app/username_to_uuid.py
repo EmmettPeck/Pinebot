@@ -37,5 +37,6 @@ class UsernameToUUID:
             uuid = json_data['id']
         except KeyError as e:
             print("UsernameToUUID KeyError raised:", e)
+            return ""
 
         return uuid
