@@ -4,7 +4,7 @@ Module containing singleton class for data access across multiple discord cogs.
 This module handles file loading and saving for settings information for PineBot
 
 Authors: Emmett Peck (EmmettPeck)
-Version: May 27th, 2022
+Version: July 1st, 2022
 """
 
 import json
@@ -76,3 +76,11 @@ class DB:
     def remove_container(self, popID):
         self.containers.pop(popID)
         self.save_containers()
+    
+    def get_server_name(cid):
+        '''
+        Returns corresponding container name matching cid
+        '''
+        for container in DB.get_containers():
+            if container.get('channel_id') == cid:
+                return container.get('name')
