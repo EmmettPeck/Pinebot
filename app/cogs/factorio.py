@@ -8,7 +8,8 @@ from discord.ext import tasks, commands
 
 from cogs.gamecog import GameCog
 from server import Server
-from messages import split_first, MessageType, get_msg_dict
+from messages import split_first, MessageType
+from dictionaries import get_msg_dict
 
 class Factorio(GameCog):
 

@@ -52,9 +52,3 @@ def get_type_icon(type):
     else:
         type_uni = ""
     return type_uni
-
-def get_msg_dict(username, message, MessageType, color):
-        """Appends and prints messages to return_list as dictionaries"""
-        local_dict = {"username":username, "message": message, "type": MessageType, "time": datetime.now(), 'color': color}
-        logging.info(f'"{username} {message}" {MessageType}')
-        return local_dict

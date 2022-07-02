@@ -11,7 +11,7 @@ Contains loops, filters, and send commands for linking discord & game chat
 channels using docker logs.
 
 Authors: Emmett Peck (EmmettPeck)
-Version: May 27th, 2022
+Version: July 1st, 2022
 """
 
 import asyncio
@@ -27,8 +27,9 @@ import discord
 import analytics_lib
 from database import DB
 from embedding import embed_message
-from messages import MessageType, get_msg_dict, split_first
+from messages import MessageType, split_first
 from server import Server
+from dictionaries import get_msg_dict, make_statistics
 
 
 class GameCog(commands.Cog):
@@ -191,7 +192,7 @@ class GameCog(commands.Cog):
         # Filter message into a dictionary
         dict = get_msg_dict(username="__default__",
             message=message,
-            MessageType=MessageType.MSG,
+            type=MessageType.MSG,
             color=discord.Color.blue())
 
         # If Not Ignore, Messages are sent and accounted for playtime
@@ -520,16 +521,6 @@ class GameCog(commands.Cog):
         Creates a new statistics dict in server.statistics & file for given user
         
         Server and either username or uuid parameters are required.
-        Creates file with below structure for parameters in server.
-        
-        {
-            username:'',
-            uuid:'',
-            total_playtime:'',
-            calculated_index:-1,
-            joins:[],
-            leaves:[]
-        }
 
         Parameters:
         ---
@@ -540,14 +531,7 @@ class GameCog(commands.Cog):
         `uuid` : `str`
             -- uuid to assign to statistics (Used to find & update)
         """
-        # Build Dict
-        dict = {
-            'username':'',
-            'uuid':'',
-            'total_playtime':'', 
-            'calculated_index':-1, 
-            'joins':[], 
-            'leaves':[]}
+        dict = make_statistics()
 
         # Get Filename (UUID if uuid, otherwise username)
         if username: dict['username']= filename = username
