@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from database import DB
 
 load_dotenv()
-logging.basicConfig(filename='../data/pinebot.log', level=logging.INFO,
+logging.basicConfig(filename='../data/pinebot.log', level=logging.DEBUG,
                     format='%(asctime)s [%(module)s]-[%(lineno)d] [%(levelname)s]: %(message)s')
 
 def get_prefix(bot, message):

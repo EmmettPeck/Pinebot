@@ -113,13 +113,13 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
     # Set Statistics
     statistics['total_playtime'] = str(total+joinList[0])
     statistics['calculated_index'] = c_index
-    logging.info("calculate_playtime: Pre set_statistics")
+    logging.debug("calculate_playtime: Pre set_statistics")
     cog.set_statistics(statistics=statistics, server_name=server_name, request=request)
     to_return['playtime'] = total 
 
     # Save only if incremented
     if c_index > pre_index:
-        logging.info("calculate_playtime: Pre save_statistics")
+        logging.debug("calculate_playtime: Pre save_statistics")
         cog.save_statistics(server_name=server_name, request=request)
 
     # Playtime for online players -- If there's 1 more join than leaves
@@ -129,7 +129,7 @@ def calculate_playtime(statistics:dict, server_name:str, request:str, cog) -> da
             to_return['playtime'] = total + now - joinList[c_index+1]
     except TypeError: # Catch 'NoneType'
         pass
-    logging.info(f"calculate_playtime: {to_return}")
+    logging.debug(f"calculate_playtime: {to_return}")
     return to_return
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------
 def handle_playtime(bot, request:str, server_name:str='total'):
@@ -148,9 +148,9 @@ def handle_playtime(bot, request:str, server_name:str='total'):
         for cog in DB.get_game_cogs():
             current = bot.get_cog(cog.split('.',1)[1].title())
             if current == None: continue
-            logging.info("Pre get_statistics")
+            logging.debug("Pre get_statistics")
             stats = current.get_statistics(server_name=server_name, request=request)
-            logging.info(f"handle_playtime: from server_name:{server_name} request:{request} got statistics {stats}")
+            logging.debug(f"handle_playtime: from server_name:{server_name} request:{request} got statistics {stats}")
 
             # Ensure servername
             if stats:

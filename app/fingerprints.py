@@ -20,7 +20,7 @@ class FingerPrints:
             # Create Path if it doesn't exist (Otherwise will throw exception)
             path = f'data/hashes/'
             if not os.path.exists(path):
-                logging.info(f"fingerprints creating file structure {path}")
+                logging.debug(f"FingerPrints creating file structure {path}")
                 os.makedirs(path)
                 
             # Load Fingerprints

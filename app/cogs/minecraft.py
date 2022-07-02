@@ -4,17 +4,17 @@ By: Emmett Peck
 A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
 """
 import logging
+
 import discord
 from discord.ext import commands
-from discord.ext.commands import has_permissions, CheckFailure
+from discord.ext.commands import CheckFailure, has_permissions
+
 from database import DB
-from messages import MessageType, get_between, get_msg_dict, split_first
-from username_to_uuid import UsernameToUUID
-from server import Server
+from dictionaries import get_msg_dict
 from embedding import embed_build
-import analytics_lib 
-
-
+from messages import MessageType, get_between, split_first
+from server import Server
+from username_to_uuid import UsernameToUUID
 from cogs.gamecog import GameCog
 
 
@@ -43,7 +43,7 @@ class Minecraft(GameCog):
     async def sendcmd(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
         server = self.servers[self.find_server(ctx.channel.id)]
-        logging.info(f"{ctx.author} sendcmd {mess} to {server.server_name}")
+        logging.info(f"{ctx.author} invoked `>sendcmd {mess}` to {server.server_name}")
         response = self.send(server=server, command=mess, log=True)
         logging.info(response)
         if response:
@@ -93,7 +93,7 @@ class Minecraft(GameCog):
         """
         filtered = command.replace("'", "'\\''") 
         temp = super().send(server=server,command=f"rcon-cli '/{filtered}'", log=log, filter=False)
-        logging.info(f"Minecraft send return: {temp}")
+        logging.debug(f"Minecraft send return: {temp}")
         return temp
 
     def send_message(self, server:Server, message:str):
@@ -104,10 +104,12 @@ class Minecraft(GameCog):
         self.send(server=server,command=f'tellraw @a {{"text":"{message}","color":"#7289da"}}')
 
     def get_player_list(self, server:Server) -> list:
-        """ OVERLOAD: MC
-        get_player_list(self) -> ["Playername", "Playername"...]
-        For versions without a getlist function, returns None
+        """ 
+        OVERLOAD: MC
 
+        get_player_list(self) -> ["Playername", "Playername"...]
+
+        For versions without a getlist function, returns None
         """
         player_list = []
         response = self.send(server=server,command="list")
@@ -117,10 +119,12 @@ class Minecraft(GameCog):
             logging.error(f'get_player_list got False evaluating response {response}')
             return None
 
-        # Unsafe Player_Max Split
-        player_max = int(response.split("max of")[1].split()[0])
-        logging.debug(f"{server.server_name} player_max={player_max}")
-        server.player_max = player_max
+        # Player_Max Split
+        player_max_str = response.split("max of")[1].split()[0]
+        if player_max_str.isnumeric():
+            server.player_max = int(player_max_str)
+            logging.debug(f"{server.server_name} player_max={server.player_max}")
+        
 
         # Break Apart Onlineplayer name strings
         stripped = response.split("online:")[1].strip()
