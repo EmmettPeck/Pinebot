@@ -722,14 +722,18 @@ class GameCog(commands.Cog):
                 # Account Link
                 # Check message against active link-keys, confirming matches
                 for key in server.link_keys:
-                    if message.get('username') == key.get('name'):
+                    if message.get('username') == key.get('username'):
                         if message.get('message') == key.get('keyID'):
                             logging.debug(f"link-key match found {message} for {key}")
-                            await analytics.confirm_link(key)
+                            await analytics.confirm_link(
+                                link_key=key,
+                                server_name=server.server_name,
+                                uuid=self.get_uuid(username=key.get('username')),
+                                game=server.cog_name)
                             server.link_keys.remove(key)
 
                     # Throw out old keys
-                    if datetime.utcnow() >= key.get('expires'):
+                    elif datetime.utcnow() >= key.get('expires'):
                         logging.debug(f"link-key removing old key {key} at {datetime.utcnow()}")
                         server.link_keys.remove(key)
                         

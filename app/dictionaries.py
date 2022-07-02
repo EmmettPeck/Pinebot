@@ -16,7 +16,7 @@ import discord
 from messages import MessageType
 
 
-def make_link_key(username:str,keyID:str,expires:datetime.datetime):
+def make_link_key(username:str, keyID:str, id:int, expires:datetime.datetime):
     """
     Returns: a link key dictionary with given structure
 
@@ -28,11 +28,16 @@ def make_link_key(username:str,keyID:str,expires:datetime.datetime):
     `keyID`:`str`
         - Unique key to store 
 
+    `id`:int
+        - Discord userid that requested the link
+
     `expires`:`datetime`
         - Time the key expires
+
+    
     """
 
-    return {'username':username,'keyID':keyID,'expires':expires}
+    return {'username':username,'keyID':keyID,'expires':expires, 'id':id}
 
 def get_msg_dict(username:str, message:str, type:MessageType, color:discord.Color, time=datetime.now()):
     """
@@ -77,7 +82,7 @@ def make_statistics():
         'leaves':[],
         'linked':''}
 
-def make_useraccount(id:int):
+def make_user_account(id:int):
     """
     Returns an empty user account.
 
@@ -88,7 +93,7 @@ def make_useraccount(id:int):
         'linked':[]
     }
 
-def make_linkaccount():
+def make_link_account(server:str,username:str,uuid:str,game:str):
     """
     Returns a linked account dictionary.
 
@@ -98,9 +103,19 @@ def make_linkaccount():
     ---
     `server`:`str`
         - Name of server of linked account
+
     `username`:`str`
-        - Username of linked account
+        - Most recent username of linked account.
+
     `UUID`:`str`
-        - UUID of linked account
+        - UUID of linked account, if present.
+        
+    `game`:`str`
+        - Name of service that holds the account
     """
-    pass
+    return {
+        'server':server,
+        'username':username,
+        'UUID':uuid,
+        'game':game
+    }
