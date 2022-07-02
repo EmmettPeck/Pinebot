@@ -9,14 +9,14 @@ Authors: Emmett Peck (EmmettPeck)
 Version: July 1st, 2022
 """
 
-import datetime
+from datetime import datetime
 
 import discord
 
 from messages import MessageType
 
 
-def make_link_key(username:str, keyID:str, id:int, expires:datetime.datetime):
+def make_link_key(username:str, keyID:str, id:int, expires):
     """
     Returns: a link key dictionary with given structure
 
@@ -109,7 +109,7 @@ def make_link_account(server:str,username:str,uuid:str,game:str):
 
     `UUID`:`str`
         - UUID of linked account, if present.
-        
+
     `game`:`str`
         - Name of service that holds the account
     """

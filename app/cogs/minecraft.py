@@ -120,11 +120,13 @@ class Minecraft(GameCog):
             return None
 
         # Player_Max Split
-        player_max_str = response.split("max of")[1].split()[0]
-        if player_max_str.isnumeric():
-            server.player_max = int(player_max_str)
-            logging.debug(f"{server.server_name} player_max={server.player_max}")
-        
+        try:
+            player_max_str = response.split("max of")[1].split()[0]
+            if player_max_str.isnumeric():
+                server.player_max = int(player_max_str)
+                logging.debug(f"{server.server_name} player_max={server.player_max}")
+        except IndexError:
+            pass
 
         # Break Apart Onlineplayer name strings
         stripped = response.split("online:")[1].strip()

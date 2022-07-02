@@ -39,7 +39,7 @@ def generateCode(length=5):
     return random.sample(digits + letters, length)
 
 # ------------------------------------------------------------------------------
-class Analytics(commands.Cog):
+class Accounts(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
@@ -186,12 +186,12 @@ class Analytics(commands.Cog):
         help='Link a whitelisted account, enabling analytics. Usage '
             '`>link <account-name>` in a gameserver channel. Case Sensitive.')
     async def link(self, ctx, name:str):
-        logging.info(f"{ctx.author.name} invoked command `>link {name}` in {ctx.channel.name}:{ctx.id}")
+        logging.info(f"{ctx.author.name} invoked command `>link {name}` in {ctx.channel.name}:{ctx.channel.id}")
 
         # Ensure is sent in a channel with a linked gameserver
         flag = False
         for container in DB.get_containers():
-            if ctx.id == container.get("channel_id"):
+            if ctx.channel.id == container.get("channel_id"):
                 flag = True
         if not flag:
             logging.info(f"link command: server not appropriate")
@@ -203,7 +203,7 @@ class Analytics(commands.Cog):
             # (Ensures matching servername and username)
         for account in self.accounts:
             for subaccount in account.accounts: 
-                if (DB.get_server_name(cid=ctx.id) == subaccount.get('servername') 
+                if (DB.get_server_name(cid=ctx.channel.id) == subaccount.get('servername') 
                 and subaccount.get("name") == name):
                     logging.info(f"link command: {name} already linked to "
                         f"{account.get('name')}")
@@ -214,11 +214,11 @@ class Analytics(commands.Cog):
         link_key = generateCode()
         
         # Attempt to add link-key
-        result = self.add_link_key(cid=ctx.id,link_key=make_link_key(
+        result = self.add_link_key(cid=ctx.channel.id,link_key=make_link_key(
             username=name,
             keyID=link_key,
             id=ctx.author.id,
-            expires=datetime.utcnow()+datetime.timedelta(minutes=5)))
+            expires=datetime.utcnow()+timedelta(minutes=5)))
 
         # Direct Message link_key to user if successfully added
         if result == True: 
@@ -245,4 +245,4 @@ def setup(bot):
     """
     Setup conditon for discord.py cog
     """
-    bot.add_cog(Analytics(bot))
+    bot.add_cog(Accounts(bot))
