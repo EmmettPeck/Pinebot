@@ -192,12 +192,14 @@ class Accounts(commands.Cog):
         await user.send(embed=embed_build(message=f"Successfully Linked {game} Account {link_key['username']}",icon="🔑"))
         logging.info(f"Successfully linked {username} to {account_id}")
 # COMMANDS ---------------------------------------------------------------------
+
+# LINK
     @commands.command(
         name='link',
-        brief='link a non-discord account to your account',
+        brief='link a non-discord account to your account.',
         help='Link a whitelisted account, enabling analytics. Usage '
             '`>link <account-name>` in a gameserver channel. Case Sensitive.')
-    async def link(self, ctx, name:str):
+    async def link(self, ctx, name):
         logging.info(f"{ctx.author.name} invoked command `>link {name}` in {ctx.channel.name}:{ctx.channel.id}")
 
         # Ensure is sent in a channel with a linked gameserver
@@ -207,8 +209,10 @@ class Accounts(commands.Cog):
                 flag = True
         if not flag:
             logging.info(f"link command: server not appropriate")
-            await ctx.send(embed=embed_build(
-                message="Please use command in a gameserver-linked channel."))
+            await ctx.reply(
+                embed=embed_build(message="Please use command in a gameserver-linked channel."),
+                mention_author=False
+            )
             return
  
         # Check if is already linked to any account 
@@ -217,11 +221,17 @@ class Accounts(commands.Cog):
             try:
                 for subaccount in account['linked']:
                     if (DB.get_server_name(cid=ctx.channel.id) == subaccount['server']) and (subaccount["username"] == name):
-                        logging.info(f"link command: {name} already linked to {subaccount['username']}")
                         user = await self.bot.fetch_user(account['id'])
-                        await ctx.send(embed=embed_build(
-                            message=f"Account {name} is already linked to {user.name}", 
-                            icon='⚠️'))
+                        logging.info(f"link command: {name} already linked to {subaccount['username']}")
+                        
+                        # Inform user account is already linked
+                        await ctx.reply(
+                            embed=embed_build(
+                                message=f"Account {name} is already linked to {user.name}#{user.discriminator}", 
+                                icon='🖇'
+                            ),
+                            mention_author=False
+                        )
                         return
             except KeyError as e:
                 logging.error(f"Link Command: account link check failed: {e}")
@@ -230,28 +240,39 @@ class Accounts(commands.Cog):
         expires = datetime.utcnow().replace(tzinfo=timezone.utc)+timedelta(minutes=5)
         
         # Attempt to add link-key
-        result = self.add_link_key(cid=ctx.channel.id,link_key=make_link_key(
-            username=name,
-            keyID=link_key,
-            id=ctx.author.id,
-            expires=expires))
+        result = self.add_link_key(
+            cid=ctx.channel.id,
+            link_key=make_link_key(
+                username=name,
+                keyID=link_key,
+                id=ctx.author.id,
+                expires=expires
+            )
+        )
 
-        # Direct Message link_key to user if successfully added
         if result == True: 
             logging.info(f"link command: {name} added link-key `{link_key}` to link to {ctx.author.name}")
-            await ctx.author.send(embed=embed_build(
-                message=f"Your link-key is `{link_key}`",
-                description=f"Send this in {ctx.channel.name}'s ingame chat to link {name} to your account.\n"
-                f"Key expires in 5 minutes at <t:{int(round(expires.timestamp()))}:t>",
-                icon="🔑"))
+            # Direct Message Link-Key
+            await ctx.author.send(
+                embed=embed_build(
+                    message=f"Your link-key is `{link_key}`",
+                    description=f"Send this in {ctx.channel.name}'s ingame chat to link {name} to your account.\n"
+                    f"Key expires in 5 minutes at <t:{int(round(expires.timestamp()))}:t>",
+                    icon="🔑"
+                )
+            )
         
-        # If unsuccessful, inform player
         elif result == False: 
             logging.info(f"link command: {name} not recognized.")
-            await ctx.send(embed=embed_build(
-                icon="❔",
-                message=f"Player {name} is not recognized on Pineserver.",
-                description="Usernames are Case-Sensitive. Have they played on Pineserver before?"))
+            # Inform player that name was not recognized
+            await ctx.reply(
+                embed=embed_build(
+                    icon="❔",
+                    message=f"Player {name} is not recognized on Pineserver.",
+                    description="Usernames are Case-Sensitive. Have they played on Pineserver before?"
+                ),
+                mention_author=False
+            )
         
         # Error Cases
         elif result == None:
@@ -263,12 +284,76 @@ class Accounts(commands.Cog):
         logging.debug(f"Link Command Error: {error}")
         logging.debug(f"Link Command Error Type: {type(error)}")
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(embed=embed_build(
-                icon="⚠️",
-                message="Missing Username To Link -- `>help link` for more.", 
-                timestamp=False
-                ))
+            # Needs Username Parameter Message
+            await ctx.reply(
+                embed=embed_build(
+                    icon="⚠️",
+                    message="Missing Username To Link -- `>help link` for more.", 
+                    timestamp=False
+                ),
+                mention_author=False
+            )
 
+# UNLINK
+    @commands.command(
+        name="unlink",
+        brief='Unlink a account from your Discord user.',
+        help='Unlink a whitelisted account. Useful for'
+       ' transfering to other accounts. Usage `>unlink <account-name>` in a'
+       ' gameserver channel. Case Sensitive.'
+    )
+    async def unlink(self, ctx, name):
+        i = 0
+
+        # Look for account in accounts, unlinking account if found
+        for account in self.accountDB.get_accounts():
+            try:
+                if ctx.author.id == account['id']: # Ensure account is authors
+                    for subaccount in account['linked']: 
+                        if (DB.get_server_name(cid=ctx.channel.id) == subaccount['server']) and (subaccount["username"] == name):
+                            user = await self.bot.fetch_user(account['id'])
+                            logging.debug(f'Unlinking account {name} from {user.name}#{user.discriminator}')
+
+                            self.accountDB.accounts[i]['linked'].remove(subaccount)
+                            self.accountDB.save_account(ctx.author.id)
+                            
+                            # Inform User Via Direct Message
+                            await user.send(
+                                embed=embed_build(
+                                    message=f"Successfully removed {name} from {user.name}#{user.discriminator}", 
+                                    icon='🖇'
+                                    )
+                                )
+                            return
+            except KeyError as e:
+                logging.error(f"Unlink Command: account link check failed: {e}")
+            i+=1
+        
+        # Fallthrough Message, Inform in channel that no account was found.
+        await ctx.reply(
+            embed=embed_build(
+                icon="⚠️",
+                message=f"No account named `{name}` was found linked to"
+                f" {ctx.author.name}#{ctx.author.discriminator}",
+                timestamp=False
+            ),
+            mention_author=False
+        )
+    @unlink.error
+    async def unlink_error(self, ctx, error):
+        logging.debug(f"Unlink Command Error: {error}")
+        logging.debug(f"Unlink Command Error Type: {type(error)}")
+        if isinstance(error, commands.MissingRequiredArgument):
+            await ctx.reply(
+                embed=embed_build(
+                    icon="⚠️",
+                    message="Missing Username To Unlink -- `>help link` for more.", 
+                    timestamp=False
+                ),
+                mention_author=False
+            )
+
+# 
 def setup(bot):
     """
     Setup conditon for discord.py cog

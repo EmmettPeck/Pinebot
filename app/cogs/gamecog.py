@@ -730,6 +730,7 @@ class GameCog(commands.Cog):
                         if message['username'] == key['username']:
                             logging.debug(f"checking {message['message']} against {key['keyID']}")
                             if message['message'] == key['keyID']:
+                                # Link Key Match
                                 logging.debug(f"link-key match found {message} for {key}")
                                 await analytics.confirm_link(
                                     link_key=key,
@@ -737,6 +738,7 @@ class GameCog(commands.Cog):
                                     uuid=self.get_uuid(username=key['username']),
                                     game=server.cog_name)
                                 server.link_keys.remove(key)
+                                return # Don't sync accountlink messages
                         
                         # Throw out old keys
                         elif t >= key['expires']:
@@ -751,7 +753,7 @@ class GameCog(commands.Cog):
                 await ctx.send(embed=embed_message(
                     msg_dict=message,
                     username_fixes=self.get_username_fixes()))
-        except queue.Empty:
+        except queue.Empty: 
             await asyncio.sleep(0)
 
     async def handle_connect_queue(self, server:Server):
