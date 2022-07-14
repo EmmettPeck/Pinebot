@@ -77,7 +77,7 @@ class DB:
         self.containers.pop(popID)
         self.save_containers()
     
-    def get_server_name(cid):
+    def get_server_name(self, cid):
         '''
         Returns corresponding container name matching cid
         '''

@@ -39,7 +39,7 @@ def make_link_key(username:str, keyID:str, id:int, expires):
 
     return {'username':username,'keyID':keyID,'expires':expires, 'id':id}
 
-def get_msg_dict(username:str, message:str, type:MessageType, color:discord.Color, time=datetime.now()):
+def get_msg_dict(username:str, message:str, type:MessageType, color:discord.Color, time=datetime.now()): #TODO change to offset-aware UTC datetimes (In analytics too)
     """
     Returns a dictionary with given elements
 
@@ -62,7 +62,7 @@ def get_msg_dict(username:str, message:str, type:MessageType, color:discord.Colo
     """
     return {
         "username":username, 
-        "message": message, 
+        "message": message.strip(), 
         "type": type, 
         "time": time, 
         'color': color}

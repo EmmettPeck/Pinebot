@@ -129,8 +129,8 @@ class Minecraft(GameCog):
             pass
 
         # Break Apart Onlineplayer name strings
-        stripped = response.split("online:")[1].strip()
         try:
+            stripped = response.split("online:")[1].strip()
             for player in stripped.split(','):
                 player_list.append(player.strip())
         except IndexError:

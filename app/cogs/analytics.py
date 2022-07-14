@@ -46,7 +46,8 @@ class Analytics(commands.Cog):
         Precondition: server is an str
         """
         logging.debug(f"Gathering playtime for {name} {server}")
-        # If name not provided, prompt user and return.
+        
+        # If name not provided, check for linked accounts, if none, return
         if name == None:
             await ctx.send(
                 "Please provide a playername,"

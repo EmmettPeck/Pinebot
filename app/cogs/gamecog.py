@@ -15,7 +15,6 @@ Version: July 1st, 2022
 """
 
 import asyncio
-import datetime
 import json
 import os
 import queue
@@ -23,6 +22,7 @@ import logging
 
 from discord.ext import commands, tasks
 import discord
+from datetime import timezone, datetime
 
 import analytics_lib
 from database import DB
@@ -72,7 +72,8 @@ class GameCog(commands.Cog):
     def cog_unload(self):
         self.pass_message.cancel()
 
-    # To Be Overloaded: --------------------------------------------------------
+#===========================To Be Overloaded====================================
+#   Functions to be overloaded by children for unique GameCog implementations
 
     def get_version(self) -> str:
         """
@@ -720,24 +721,33 @@ class GameCog(commands.Cog):
                 analytics = self.bot.get_cog("Accounts")
 
                 # Account Link
-                # Check message against active link-keys, confirming matches
                 for key in server.link_keys:
-                    if message.get('username') == key.get('username'):
-                        if message.get('message') == key.get('keyID'):
-                            logging.debug(f"link-key match found {message} for {key}")
-                            await analytics.confirm_link(
-                                link_key=key,
-                                server_name=server.server_name,
-                                uuid=self.get_uuid(username=key.get('username')),
-                                game=server.cog_name)
+                    try:
+                        t = datetime.utcnow().replace(tzinfo=timezone.utc)
+                        
+                        # Check message against active link-keys, confirming matches
+                        logging.debug(f"checking {message['username']} against {key['username']}")
+                        if message['username'] == key['username']:
+                            logging.debug(f"checking {message['message']} against {key['keyID']}")
+                            if message['message'] == key['keyID']:
+                                logging.debug(f"link-key match found {message} for {key}")
+                                await analytics.confirm_link(
+                                    link_key=key,
+                                    server_name=server.server_name,
+                                    uuid=self.get_uuid(username=key['username']),
+                                    game=server.cog_name)
+                                server.link_keys.remove(key)
+                        
+                        # Throw out old keys
+                        elif t >= key['expires']:
+                            logging.debug(f"link-key removing old key {key} at {t}")
                             server.link_keys.remove(key)
 
-                    # Throw out old keys
-                    elif datetime.utcnow() >= key.get('expires'):
-                        logging.debug(f"link-key removing old key {key} at {datetime.utcnow()}")
-                        server.link_keys.remove(key)
+                    except KeyError:
+                        continue
                         
-                # Message Handling
+                # Send Messages
+                logging.info(f'Message {server.server_name}:{message}')
                 await ctx.send(embed=embed_message(
                     msg_dict=message,
                     username_fixes=self.get_username_fixes()))
@@ -838,7 +848,7 @@ class GameCog(commands.Cog):
                     username=index.get('user'),
                     index=index.get('index'))
 
-#-------------------------Scheduled Tasks---------------------------------------
+#------------------------------Events-------------------------------------------
     @tasks.loop(seconds=DB.get_chat_link_time())
     async def pass_message(self):
         """
@@ -853,6 +863,7 @@ class GameCog(commands.Cog):
 
             await self.handle_connect_queue(server=server)
             await self.handle_message_queue(server=server, ctx=ctx)
+    
     @pass_message.before_loop
     async def before_pass_mc_message(self):
         await self.bot.wait_until_ready() 

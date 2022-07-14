@@ -5,10 +5,11 @@ Authors: Emmett Peck (EmmettPeck)
 Version: May 28th, 2022
 """
 
+import logging
 import discord
 
 from messages import get_type_icon, split_first, MessageType
-from datetime import datetime
+from datetime import datetime, timezone
 from analytics_lib import td_format
 
 
@@ -23,7 +24,7 @@ def embed_server_list(reference:discord.Member, input:list):
     embed = discord.Embed(
         title = 'Server List',
         description='Current servers organized by game.\n',
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.utcnow().replace(tzinfo=timezone.utc),
         color = discord.Color.dark_gold())
 
     # Sort input by version
@@ -95,7 +96,7 @@ def embed_playtime(
         title=f"Playtime {username}",
         description=
             'Total on Pineserver: ``⌛ '+td_format(total_playtime)+'``\n\u200b',
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.utcnow().replace(tzinfo=timezone.utc),
         color=discord.Color.dark_purple())
 
     # Add Top Server Dicts
@@ -117,15 +118,18 @@ def embed_playtime(
     return embed
 
 
-def embed_build(message:str, description:str=None, reference:discord.Member=None, icon='📄'):
+def embed_build(message:str, description:str=None, reference:discord.Member=None, icon='📄', timestamp=True):
     """
     Returns: A formatted message by reference
     """
     # Build Embed
     embed = discord.Embed(
         title=f"{icon} {message}",
-        color=discord.Color.dark_gold(),
-        timestamp=datetime.utcnow())
+        color=discord.Color.dark_gold())
+
+    # Timestamp
+    if timestamp:
+        embed.timestamp = datetime.utcnow().replace(tzinfo=timezone.utc)
 
     # Description
     if description:
@@ -161,7 +165,10 @@ def embed_message(msg_dict:dict, username_fixes:tuple=("",""), fix_type:MessageT
 
     if (mtype == fix_type) or (mtype is None):
         username = username_fixes[0]+username+username_fixes[1]
-    
-    return discord.Embed(title=f"{get_type_icon(mtype)} {username} {message}",
-        color = color)
+    try:
+        return discord.Embed(title=f"{get_type_icon(mtype)} {username} {message}",
+            color = color)
+    except discord.errors.HTTPException as f: # To Catch: discord.errors.HTTPException: 400 Bad Request (error code: 50035): Invalid Form Body In embed.title: Must be 256 or fewer in length.
+        logging.critical(f)
+        return None
     
