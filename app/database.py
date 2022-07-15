@@ -9,6 +9,7 @@ Version: July 1st, 2022
 
 import json
 import docker
+from pymongo import MongoClient
 
 def singleton(cls):
     return cls()
@@ -16,17 +17,25 @@ def singleton(cls):
 @singleton
 class DB:
     """
-    A singleton class containing settings information for data access across 
-    multiple discord cogs. Handles saving/loading of settings information.
+    A singleton class containing settings, Docker, and MongoDB connection info.
     """
     def __init__(self):
+        # MongoDB
+        uri = "mongodb+srv://pinebot.hzrfoqe.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509&retryWrites=true&w=majority"
+        self.mongo = MongoClient(uri,
+                     tls=True,
+                     tlsCertificateKeyFile='testenv/X509-cert-2940582018631408693.pem')
+        
+        # Docker
+        self.client = docker.from_env()
+
+        # Settings -----------------------------------------------------------------
         self.CHAT_LINK_TIME = 1
         self.TAIL_LEN = 20
 
         self.load_containers()
         self.load_role_whitelist()
         self.load_cogs()
-        self.client = docker.from_env()
 
     def get_chat_link_time(self):
         return self.CHAT_LINK_TIME

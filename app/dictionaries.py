@@ -9,7 +9,7 @@ Authors: Emmett Peck (EmmettPeck)
 Version: July 1st, 2022
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import discord
 
@@ -76,7 +76,7 @@ def make_statistics():
     return {
         'username':'',
         'uuid':'',
-        'total_playtime':'', 
+        'total_playtime':timedelta(), 
         'calculated_index':-1, 
         'joins':[], 
         'leaves':[],
@@ -118,4 +118,13 @@ def make_link_account(server:str,username:str,uuid:str,game:str):
         'username':username,
         'UUID':uuid,
         'game':game
+    }
+
+def playtime_dict(server_name:str, last_connected, playtime, first_join, game)
+    return {
+        'servername' : server_name,
+        'last_connected': last_connected,
+        'playtime' : playtime,
+        'first_join' : first_join,
+        'game' : game
     }
