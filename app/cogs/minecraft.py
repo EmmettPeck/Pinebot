@@ -1,7 +1,9 @@
 """
 minecraft.py
-By: Emmett Peck
 A cog for discord.py that incorporates docker chatlink, header updating, and playtime logging.
+
+Authors: Emmett Peck (EmmettPeck)
+Version: July 17th, 2022
 """
 import logging
 
@@ -15,8 +17,7 @@ from embedding import embed_build
 from messages import MessageType, get_between, split_first
 from server import Server
 from username_to_uuid import UsernameToUUID
-from cogs.gamecog import GameCog
-
+from cogs.gamecog import GameCog, Identifier, class_name
 
 class Minecraft(GameCog):
 
@@ -26,11 +27,15 @@ class Minecraft(GameCog):
     @commands.has_any_role(*DB.get_role_whitelist())
     async def whitelist(self, ctx, *, mess):
         ''' Whitelists <args> to corresponding server as is defined in DChannels if user has applicable role'''
-        # TODO server ARG
-        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command=f"whitelist add {mess}",logging=True)
+        server = DB.mongo['Servers'][class_name()].find_one({'cid':ctx.channel.id}) 
+        logging.info(f'{ctx.author} invoked >whitelist {mess}')
+        response = self.send(server=server, command=f"whitelist add {mess}",logging=True)
+        
         if response:
+            logging.info(f'Whitelist {mess} on {server["name"]}')
             await ctx.send(response)
         else:
+            logging.debug(f'Improper arguments')
             await ctx.send("Server not found. Use command only in 'Minecraft' text channels.")
     @whitelist.error
     async def whitelist_error(self, error, ctx):
@@ -42,10 +47,10 @@ class Minecraft(GameCog):
     @has_permissions(administrator=True)
     async def sendcmd(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
-        server = self.servers[self.find_server(ctx.channel.id)]
-        logging.info(f"{ctx.author} invoked `>sendcmd {mess}` to {server.server_name}")
+        server = DB.mongo['Servers'][class_name()].find_one({'cid':ctx.channel.id}) 
+        logging.info(f"{ctx.author} invoked `>sendcmd {mess}` to {server['server']}")
         response = self.send(server=server, command=mess, log=True)
-        logging.info(response)
+
         if response:
             await ctx.send(response)
             return
@@ -61,8 +66,9 @@ class Minecraft(GameCog):
     # List ---------------------------------------------------------------------
     @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
     async def list(self, ctx):
-        response = self.send(server=self.servers[self.find_server(ctx.channel.id)], command="list")
-        
+        server = DB.mongo['Servers'][class_name()].find_one({'cid':ctx.channel.id}) 
+        response = self.send(server=server, command="list")
+# TODO EMBED RESPONSE, MOVE TO GET-PLAYER-LIST
         await ctx.message.delete()
         if response:
             await ctx.send(embed=embed_build(message=response, reference=ctx.author))
@@ -78,7 +84,10 @@ class Minecraft(GameCog):
 
         return super().get_uuid(username=username, uuid=uuid)
 
-    def send(self, server:Server, command:str, log=False) -> list: 
+    def get_identifier(self)-> Identifier:
+        return Identifier.CENTRALIZED
+    
+    def send(self, server:dict, command:str, log=False) -> list: 
         """
         OVERLOAD: 
         Sends command to corresponding ITZD Minecraft docker server. Returns a str output of response.
@@ -88,14 +97,14 @@ class Minecraft(GameCog):
         logging.debug(f"Minecraft send return: {temp}")
         return temp
 
-    def send_message(self, server:Server, message:str):
+    def send_message(self, server:dict, message:str):
         '''
         OVERLOAD: MC
         Sends discord blue message to MC chat
         '''
         self.send(server=server,command=f'tellraw @a {{"text":"{message}","color":"#7289da"}}')
 
-    def get_player_list(self, server:Server) -> list:
+    def get_player_list(self, server:dict) -> list:
         """ 
         OVERLOAD: MC
 
@@ -115,10 +124,12 @@ class Minecraft(GameCog):
         try:
             player_max_str = response.split("max of")[1].split()[0]
             if player_max_str.isnumeric():
-                server.player_max = int(player_max_str)
-                logging.debug(f"{server.server_name} player_max={server.player_max}")
-        except IndexError:
-            pass
+                if server['player_max'] != int(player_max_str):
+#TODO UPDATE REMOTE PLAYERMAX IF DIFFERENT
+                    server['player_max'] = int(player_max_str)
+                    logging.debug(f"{server['name']} updated player_max to {server['player_max']}")
+        except IndexError as e:
+            logging.warning(e)
 
         # Break Apart Onlineplayer name strings
         try:
@@ -126,84 +137,81 @@ class Minecraft(GameCog):
             for player in stripped.split(','):
                 player_list.append(player.strip())
         except IndexError:
-            logging.warning(f'IndexError in get_player_list for {server.server_name} while splitting response:{response}, playerlist:{player_list}')
+            logging.warning(f'IndexError in get_player_list for {server["name"]} while splitting response:{response}, playerlist:{player_list}')
             return None
         else:
             if player_list == ['']: 
-                logging.debug(f'get_player_list: No players online {server.server_name}')
+                logging.debug(f'get_player_list: No players online {server["name"]}')
                 return None
             return player_list
 
-    def is_player_online(self, server:Server,  playername:str) -> bool:
+    def is_player_online(self, server:dict,  playername:str) -> bool:
         """
         OVERLOAD: Minecraft
         If uuid_index or playername in online_players: Returns True, else False
         """
-        for player in server.online_players:
+        for player in server['online_players']:
             if playername == player: 
-                logging.debug(f"is_player_online {playername} is online {server.server_name}")
+                logging.debug(f"is_player_online {playername} is online {server['name']}")
                 return True
         return False
 
     # Filter--------------------------------------------------------------------------------------------------------------------------------------------
-    def filter(self, server:Server, message:str, ignore=False):
+    def filter(self, server:dict, message:str, ignore=False):
         """ 
-        OVERLOAD: Minecraft 1.18.2 Filter
+        OVERLOAD: Minecraft 1.19 Filter
         Filters logs by to gameversion, adding leaves/joins to connectqueue and messages to message queue
         """
-        # Fingerprint Filtering
-        if server.fingerprint.is_unique_fingerprint(message):
-            post = None
+        post = None
 
-            # Ensure '[Server thread/INFO]:' ----------------------------------------------------------------------
-            info_split = message.split('] [Server thread/INFO]',1)
-            if len(info_split) != 2:
-                return
+        # Ensure '[Server thread/INFO]:' ----------------------------------------------------------------------
+        info_split = message.split('] [Server thread/INFO]',1)
+        if len(info_split) != 2:
+            return
 
-            # Separate time; break apart entry from info ----------------------------------------------------------
-            entry = split_first(info_split[1],':')[1].strip()
-            time = split_first(info_split[0], '[')[1]
+        # Separate time; break apart entry from info ----------------------------------------------------------
+        entry = split_first(info_split[1],':')[1].strip()
+        time = split_first(info_split[0], '[')[1]
 
-            # Message Detection using <{user}> {msg} --------------------------------------------------------------
-            if (entry[0] == '<') and ('<' and '>' in entry):
-                msg  = split_first(entry,'> ')[1]
-                user = get_between(entry, '<','>')
-                post = get_msg_dict(user, msg, MessageType.MSG, discord.Color.green())
+        # Message Detection using <{user}> {msg} --------------------------------------------------------------
+        if (entry[0] == '<') and ('<' and '>' in entry):
+            msg  = split_first(entry,'> ')[1]
+            user = get_between(entry, '<','>')
+            post = get_msg_dict(user, msg, MessageType.MSG, discord.Color.green())
 
-            # Join/Leave Detection by searching for "joined the game." and "left the game."------------------------
-            elif entry.find(" joined the game") >= 0: 
-                msg = "joined the game"
-                user = entry.split(' ',1)[0]
-                post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_teal())
-            elif entry.find(" left the game") >= 0:
-                msg = "left the game"
-                user = entry.split(' ',1)[0]
-                post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_teal())
+        # Join/Leave Detection by searching for "joined the game." and "left the game."------------------------
+        elif entry.find(" joined the game") >= 0: 
+            msg = "joined the game"
+            user = entry.split(' ',1)[0]
+            post = get_msg_dict(user, msg, MessageType.JOIN, discord.Color.dark_teal())
+        elif entry.find(" left the game") >= 0:
+            msg = "left the game"
+            user = entry.split(' ',1)[0]
+            post = get_msg_dict(user, msg, MessageType.LEAVE, discord.Color.dark_teal())
 
-            # Achievement Detection ------------------------------------------------------------------------------
-            elif entry.find("has made the advancement") >= 0:
-                user = entry.split(' ',1)[0]
-                msg = f"has made the advancement [{split_first(entry,'[')[1]}"
-                post = get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.gold())
+        # Achievement Detection ------------------------------------------------------------------------------
+        elif entry.find("has made the advancement") >= 0:
+            user = entry.split(' ',1)[0]
+            msg = f"has made the advancement [{split_first(entry,'[')[1]}"
+            post = get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.gold())
 
-            # Challenge Detection --------------------------------------------------------------------------------
-            elif entry.find("has completed the challenge") >= 0:
-                user = entry.split(' ',1)[0]
-                msg = f"has completed the challenge [{split_first(entry,'[')[1]}"
-                post = get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.dark_purple())
+        # Challenge Detection --------------------------------------------------------------------------------
+        elif entry.find("has completed the challenge") >= 0:
+            user = entry.split(' ',1)[0]
+            msg = f"has completed the challenge [{split_first(entry,'[')[1]}"
+            post = get_msg_dict(user, msg, MessageType.ACHIEVEMENT, discord.Color.dark_purple())
 
-            # Death Message Detection ----------------------------------------------------------------------------
-            else:
-                dm = Death(entry)
-                if dm.is_death():
-                    post = get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.red())
+        # Death Message Detection ----------------------------------------------------------------------------
+        else:
+            dm = Death(entry)
+            if dm.is_death():
+                post = get_msg_dict(dm.player, dm.stripped_msg, MessageType.DEATH, discord.Color.red())
 
-            # If Not Ignore, Messages are sent and accounted for playtime
-            if post and (not ignore):
-                if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                    post["server"] = server.server_name
-                    server.connect_queue.put(post)
-                server.message_queue.put(post)
+        # If Not Ignore, Messages are sent and accounted for playtime
+        if post:
+            if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
+                self.handle_connect(server=server, connection=post)
+            self.handle_message(server=server, message=post)
 
 # Deaths--------------------------------------------------------------------------------------------------------------------------------------------
 class Death:

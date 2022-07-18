@@ -11,7 +11,7 @@ Contains loops, filters, and send commands for linking discord & game chat
 channels using docker logs.
 
 Authors: Emmett Peck (EmmettPeck)
-Version: July 14th, 2022
+Version: July 17th, 2022
 """
 
 import asyncio
@@ -84,7 +84,6 @@ class GameCog(commands.Cog):
         
         To be overloaded by GameCog children.     
         """
-        #TODO Implement super usage w/ get_uuid
 
         # Noncentralized_Nonchangable: Search for dict by Username, return matching uuid
         if self.get_identifier() is Identifier.NONCENTRALIZED_UNCHANGABLE:
@@ -204,17 +203,13 @@ class GameCog(commands.Cog):
 
         # Messages are sent 
         if dict:
-            mtype = dict.get('type')
-            if mtype == MessageType.JOIN or mtype == MessageType.LEAVE:
-                dict["server"] = server['name']
+            msg_type = dict.get('type')
+            if msg_type == MessageType.JOIN or msg_type == MessageType.LEAVE:
                 await self.handle_connection(
                     server=server,
                     connection=dict,
                 )
-            await self.handle_message(
-                message=dict, 
-                ctx=self.bot.get_channel(server['cid'])
-            )
+            await self.handle_message(message=dict)
         
 #---------------------------- Headers ------------------------------------------
     async def header_update(self,server:dict):
@@ -223,7 +218,7 @@ class GameCog(commands.Cog):
 
         Parameters:
         ---
-        `server` : `Server`
+        `server` : `dict`
             -- Server object to update the linked channel header for
         """
 
@@ -260,8 +255,11 @@ class GameCog(commands.Cog):
 #============================Core Methods=======================================
 # Contains scheduled tasks, boilerplate read/send, queue handling
     def load_servers(self):
+        """
+        Loads server configuration from database by class_name()
+        """
         self.servers = []
-        # Load collection of servers from database
+        
         self.server_col = DB.mongo['Servers'][class_name()] 
         for document in self.server_col.find():
             self.servers.append(document)
@@ -354,7 +352,7 @@ class GameCog(commands.Cog):
         return resp_str
 
 #------------------------- Event Handlers --------------------------------------
-    async def handle_message(self, server:dict, message:dict, ctx):
+    async def handle_message(self, server:dict, message:dict):
         """
         Empies message queue, sending messages to corresponding channels.
 
@@ -365,10 +363,10 @@ class GameCog(commands.Cog):
         `ctx`:``
             - The channel corresponding to the server
         """
-
+        ctx = self.bot.get_channel(server['cid'])
         accounts = self.bot.get_cog("Accounts")
 
-        # Account Link
+# Account Link TODO IMPROVE ACCESS QUANTITY (CURRENTLY ONCE PER MESSAGE) --> Reduce to only pull link_keys?
         for key in DB.mongo['Servers'][class_name()].find_one({'_id':server['id']}['link_keys']):
             try:
                 t = datetime.utcnow().replace(tzinfo=timezone.utc)
