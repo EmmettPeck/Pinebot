@@ -20,6 +20,7 @@ class DB:
     A singleton class containing settings, Docker, and MongoDB connection info.
     """
     def __init__(self):
+        # Configurations -------------------------------------------------------
         # MongoDB
         uri = "mongodb+srv://pinebot.hzrfoqe.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509&retryWrites=true&w=majority"
         self.mongo = MongoClient(uri,
@@ -29,13 +30,13 @@ class DB:
         # Docker
         self.client = docker.from_env()
 
-        # Settings -----------------------------------------------------------------
+        # Settings -------------------------------------------------------------
         self.CHAT_LINK_TIME = 1
         self.TAIL_LEN = 20
 
-        self.load_containers()
         self.load_role_whitelist()
         self.load_cogs()
+        # ----------------------------------------------------------------------
 
     def get_chat_link_time(self):
         return self.CHAT_LINK_TIME
@@ -51,21 +52,10 @@ class DB:
 
     def get_role_whitelist(self):
         return self.role_Whitelist
-
-    def get_containers(self):
-        return self.containers
     
     def load_role_whitelist(self):
         with open("../data/role_Whitelist.json", 'r') as read_file:
             self.role_Whitelist = json.load(read_file)
-        
-    def load_containers(self): 
-        with open("../data/containers.json", 'r') as read_file:
-            self.containers = json.load(read_file)
-
-    def save_containers(self):
-        with open("../data/containers.json", 'w') as write_file:
-            json.dump(self.containers, write_file, indent = 2)
 
     def save_cogs(self):
         with open("../data/settings/cogs.json", 'w') as f:
@@ -77,19 +67,3 @@ class DB:
             dict = json.load(f)
             self.COGS = dict.get('cogs')
             self.GAME_COGS = dict.get('gamecogs')
-
-    def add_container(self, sDict):
-        self.containers.append(sDict)
-        self.save_containers()
-
-    def remove_container(self, popID):
-        self.containers.pop(popID)
-        self.save_containers()
-    
-    def get_server_name(self, cid):
-        '''
-        Returns corresponding container name matching cid
-        '''
-        for container in DB.get_containers():
-            if container.get('channel_id') == cid:
-                return container.get('name')

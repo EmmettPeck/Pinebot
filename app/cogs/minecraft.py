@@ -70,21 +70,13 @@ class Minecraft(GameCog):
             await ctx.send(embed=embed_build("Server not found. Use command only in 'Minecraft' text channels."))
 
 # OVERLOADS ----------------------------------------------------------------------------------
-
-    def get_version(self) -> str:
-        return "Minecraft"
-
     def get_uuid(self, username:str):
         """Get player UUID from username"""
-        if username == None:
-            return None
+        if username == None: return None
 
-        converter = UsernameToUUID(username)
-        uuid = converter.get_uuid()
-        return uuid
+        uuid = UsernameToUUID(username).get_uuid()
 
-    def get_username_fixes(self) -> tuple:
-        return ("<",">")
+        return super().get_uuid(username=username, uuid=uuid)
 
     def send(self, server:Server, command:str, log=False) -> list: 
         """

@@ -13,13 +13,6 @@ from dictionaries import get_msg_dict
 
 class Factorio(GameCog):
 
-    # OVERLOADS ---------------------------------------------------------------------------
-    def get_version(self) -> str:
-        return "Factorio"
-
-    def get_username_fixes(self) -> tuple:
-        return ("<",">")
-
     def filter(self, server:Server, message:str, ignore=False):
         """
         OVERLOAD: Factorio:Latest

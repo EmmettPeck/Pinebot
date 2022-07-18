@@ -64,7 +64,6 @@ def embed_server_list(reference:discord.Member, input:list):
         icon_url= reference.avatar_url );
     return embed
 
-
 def embed_playtime(
     reference:discord.Member, 
     total_playtime:str, 
@@ -116,7 +115,6 @@ def embed_playtime(
         text='Requested by: '+reference.display_name, 
         icon_url=reference.avatar_url)
     return embed
-
 
 def embed_build(message:str, description:str=None, reference:discord.Member=None, icon='📄', timestamp=True):
     """

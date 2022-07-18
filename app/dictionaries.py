@@ -67,15 +67,15 @@ def get_msg_dict(username:str, message:str, type:MessageType, color:discord.Colo
         "time": time, 
         'color': color}
 
-def make_statistics():
+def make_statistics(username="", uuid=""):
     """
     Returns an empty statistics dictionary.
 
     Used by GameCog to store player account information.
     """
     return {
-        'username':'',
-        'uuid':'',
+        'username':username,
+        'uuid':uuid,
         'total_playtime':timedelta(), 
         'calculated_index':-1, 
         'joins':[], 
@@ -120,7 +120,7 @@ def make_link_account(server:str,username:str,uuid:str,game:str):
         'game':game
     }
 
-def playtime_dict(server_name:str, last_connected, playtime, first_join, game)
+def playtime_dict(server_name:str, last_connected, playtime, first_join, game):
     return {
         'servername' : server_name,
         'last_connected': last_connected,

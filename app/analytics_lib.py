@@ -4,6 +4,7 @@ A module to calculate a total playtime from a lists (join/leave) datetimes.
 Authors: Emmett Peck (EmmettPeck)
 Version: July 14th, 2022
 """
+from pymongo import collection
 from datetime import datetime, timedelta
 import logging
 
@@ -32,11 +33,11 @@ def td_format(td_object):
     return ", ".join(strings)
 
 # Connect Event ----------------------------------------------------------------
-def is_recentest_join(col, id:ObjectId) -> bool:
+def is_recentest_join(col:collection.Collection, id:ObjectId) -> bool:
     """
     Returns true if Join is most recent connect event, otherwise returns false
     """
-    statistics = col.find({'_id' : id})
+    statistics = col.find_one({'_id' : id})
     joinList, leaveList = statistics['joins'], statistics['leaves']
     join_len, leave_len = len(joinList), len(leaveList)
 
@@ -55,7 +56,7 @@ def is_recentest_join(col, id:ObjectId) -> bool:
         return False
 
 # Playtime -----------------------------------------------------------------------------------------------------------------------------------------------
-def calculate_playtime(col, id:ObjectId, server_name:str) -> datetime:
+def calculate_playtime(col:collection.Collection, id:ObjectId, server_name:str) -> datetime:
     """
     Intelligently calculates playtime of a server for a player.
     Usage: calculate_playtime(server.statistics) -> playtime
@@ -64,7 +65,7 @@ def calculate_playtime(col, id:ObjectId, server_name:str) -> datetime:
     Total stored as firstjoin+totalplaytime. On load converted to timedelta.
     """
     # Get Element from MongoDB
-    statistics = col.find({'_id' : id})
+    statistics = col.find_one({'_id' : id})
     if statistics is None: return None
 
     # Variables
@@ -100,7 +101,7 @@ def calculate_playtime(col, id:ObjectId, server_name:str) -> datetime:
     # Update Database
     statistics['total_playtime'] = str(total+joinList[0])
     statistics['calculated_index'] = c_index
-    col.updateOne({'_id':id}, statistics)
+    col.update_one({'_id':id}, {"$set":statistics})
 
     # Set Returntime to total
     package['playtime'] = total 
