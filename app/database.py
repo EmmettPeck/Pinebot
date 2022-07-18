@@ -32,7 +32,6 @@ class DB:
 
         # Settings -------------------------------------------------------------
         self.CHAT_LINK_TIME = 1
-        self.TAIL_LEN = 20
 
         self.load_role_whitelist()
         self.load_cogs()
@@ -40,9 +39,6 @@ class DB:
 
     def get_chat_link_time(self):
         return self.CHAT_LINK_TIME
-
-    def get_tail_len(self):
-        return self.TAIL_LEN
 
     def get_cogs(self):
         return self.COGS + self.GAME_COGS

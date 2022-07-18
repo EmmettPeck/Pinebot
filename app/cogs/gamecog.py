@@ -16,19 +16,16 @@ Version: July 14th, 2022
 
 import asyncio
 import logging
-from bson import ObjectId
-from pymongo import collection
 from enum import Enum
 
 from discord.ext import commands, tasks
 import discord
 from datetime import timezone, datetime
-
 import analytics_lib
 from database import DB
 from embedding import embed_message
 from messages import MessageType
-from server import Server
+from hash import get_hash
 from dictionaries import get_msg_dict, make_statistics
 
 
@@ -182,7 +179,7 @@ class GameCog(commands.Cog):
 
         logging.warning(f"{message} GameCog send_message not implemented.")
 
-    def filter(self,server:dict, context:dict, message:str):
+    async def filter(self, server:dict, message:str):
         """
         Filters logs using versionbased conditions by type and content. 
         Adds leaves/joins to connectqueue and messages to message queue.
@@ -193,13 +190,11 @@ class GameCog(commands.Cog):
         ---
         `server` : `dict`
             -- server to reference
+
         `message` : `str`
             -- Message string to filter using conditions
         """
-        # TODO Check against Fingerprint dict (context)
-            # Context is to prevent doublemessages from timestamps used for since message logic
-
-        # Filter message into a dictionary
+        # Build Dictionary
         dict = get_msg_dict(
             username="__default__",
             message=message,
@@ -207,20 +202,20 @@ class GameCog(commands.Cog):
             color=discord.Color.blue()
         )
 
-        # If Not Ignore, Messages are sent and accounted for playtime
+        # Messages are sent 
         if dict:
             mtype = dict.get('type')
             if mtype == MessageType.JOIN or mtype == MessageType.LEAVE:
                 dict["server"] = server['name']
-                self.handle_connection(
+                await self.handle_connection(
                     server=server,
                     connection=dict,
                 )
-            self.handle_message(
+            await self.handle_message(
                 message=dict, 
                 ctx=self.bot.get_channel(server['cid'])
             )
-            
+        
 #---------------------------- Headers ------------------------------------------
     async def header_update(self,server:dict):
         """
@@ -271,7 +266,7 @@ class GameCog(commands.Cog):
         for document in self.server_col.find():
             self.servers.append(document)
 
-    def read(self, server:dict, ignore=False):
+    async def read(self, server:dict):
         """
         Tails docker logs of server, sending output to filter().
         (Tail length defined in database.py)
@@ -284,13 +279,46 @@ class GameCog(commands.Cog):
         `ignore` : `bool`
             -- Whether to print, log, and act on events
         """
+        new_context = {'last':datetime.utcnow(), 'hashes':list(), 'name':server['name']}
+        
+        # Find Context
+        flag = False
+        for c in self.contexts:
+            try:
+                if c['name'] == server['name']:
+                    context = c
+                    flag = True
+                    break
+            except KeyError:
+                continue
+        if not flag:
+            self.contexts.append(new_context)
+            logging.debug(f'Context not found in {self.contexts}')
+            self.read(server)
+            return
+
+        # Stream Logs
         container = DB.client.containers.get(server['docker_name'])
-        response = container.logs(tail=DB.get_tail_len()).decode(
-            encoding="utf-8", 
-            errors="ignore")
-                
-        for msg in response.strip().split('\n'):
-            self.filter(message=msg, server=server,ignore=ignore)
+        for log in container.logs(since=context['last'], stream=True):
+            # Check if it's an empty byte object, if so, set context and return
+            if log == bytes():
+                i = 0
+                for c in self.contexts:
+                    try:
+                        if c['name'] == server['name']:
+                            self.contexts[i] = new_context
+                    except KeyError:
+                        pass
+                    i+=1
+                return
+            
+            log = log.decode(encoding="utf-8", errors="ignore")
+            log_hash = get_hash(log)
+            if log_hash in context['hashes']:
+                continue
+            new_context['hashes'].append(log_hash)
+
+            await self.filter(message=log, server=server)
 
     def send(self, server:dict, command:str, log:bool=False, filter=True) -> str: 
         """
@@ -440,15 +468,17 @@ class GameCog(commands.Cog):
 
 
 #------------------------------Events-------------------------------------------
-    async def pass_message(self):
+    @tasks.loop(seconds=DB.get_chat_link_time())
+    async def read_messages(self):
         """
         Reads servers on interval, sends new msgs to linked discord channel.
         
-        Reads each server each interval, handles queues of each server each 
-        interval. Manages chat-link functionality from servers->discord.
+        Manages chat-link functionality from servers->discord.
         """
-        for server in self.servers:
-            self.read(server)
+        await asyncio.gather(self.read(server) for server in self.servers)
+    @read_messages.before_loop
+    async def before_read_messages(self):
+        await self.bot.wait_until_ready() 
 
     @commands.Cog.listener("on_message")
     async def on_disc_message(self, message):
@@ -458,8 +488,8 @@ class GameCog(commands.Cog):
         Does not send commands or bot responses.
         """
         if message.author.bot or message.content.startswith('>'): return
-            
-        msg = f"{self.get_username_fixes()[0]}{message.author.name}{self.get_username_fixes()[1]} {message.content}"
+        f = self.get_username_fixes()
+        msg = f"{f[0]}{message.author.name}{f[1]} {message.content}"
         logging.info(f'{server["name"]}.{class_name()}: "{msg}"')
         
         for server in self.servers:
