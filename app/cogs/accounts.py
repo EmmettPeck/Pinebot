@@ -109,7 +109,7 @@ class Accounts(commands.Cog):
         
         query = col.update_one({'_id':account_id},{'$addToSet':{'linked':link}})
         if query.acknowledged:
-            # Update linked tag in playerfile
+            # Update linked tag in playerfile TODO SERVERNAME
             DB.mongo['Servers'][game].update_one({'uuid':uuid,'username':username},{'$set':{'linked':account_id}})
 
             # Inform User
@@ -226,11 +226,30 @@ class Accounts(commands.Cog):
     )
     async def unlink(self, ctx, name):
         acctcol = DB.mongo['Guilds']['Pineserver']
-        datadb = DB.mongo['Servers']
 
-        # Get account from author id
+        # Match cid to server
+        flag = False
+        for cog in DB.get_game_cogs():
+            cog_name = cog.split('.',1)[1].title()
+            query = DB.mongo['Servers'][cog_name].find_one({'cid':ctx.channel.id})
+            if query is None:
+                continue
+            server_name = query['name']
+            flag = True
+            break
+        # Improper Channel Catch
+        if not flag:
+            logging.info(f"link command: channel not appropriate")
+            await ctx.reply(
+                embed=embed_build(message="Please use command in a gameserver-linked channel."),
+                mention_author=False
+            )
+            return
+        
+        # Get Account document from discord author id
         query = acctcol.find_one({'id':ctx.author.id})
         if query is None:
+            # Prompt that user was not found
             await ctx.reply(
                 embed=embed_build(
                     icon="⚠️",
@@ -243,31 +262,30 @@ class Accounts(commands.Cog):
         
         # Ensure linked account's account is linked to server 
         for account in query['linked']:
-            col = datadb[account['game']]
-            query = col.find_one({'_id':account['servers_id']})
-            
-
+            # Attempt to find PlayerData in server
+            col = DB.mongo[account['game']][server_name]
             if query is None: continue
 
-            acct_doc_id = query['servers_id']
+            # Get ID of PlayerData document from Account document
+            acct_doc_id = query['linked']
+            
+            # Remove link dict, Remove link_id from playerdata
+            col.update_one({'_id':account['servers_id']},{'$set':{'servers_id':None}})
+            acctcol.update_one({'_id':acct_doc_id},{'$pop':{"linked":account['servers_id']}})
 
-            for cid in query['cid']:
-                if cid == ctx.channel.id:
-                    # Remove link dict, Remove link_id from playerdata
-                    col.update_one({'_id':account['servers_id']},{'$set':{'servers_id':None}})
-                    acctcol.update_one({'_id':acct_doc_id},{'$pop':{"linked":account['servers_id']}})
+            # Find User & Prompt
+            user = await self.bot.fetch_user(account['id'])
+            logging.debug(f'Unlinked account {name} from {user.name}#{user.discriminator}')
 
-                    user = await self.bot.fetch_user(account['id'])
-                    logging.debug(f'Unlinked account {name} from {user.name}#{user.discriminator}')
-
-                    # Inform User Via Direct Message
-                    await user.send(
-                        embed=embed_build(
-                            message=f"Successfully removed {name} from {user.name}#{user.discriminator}", 
-                            icon='🖇'
-                            )
-                        )
-                    return
+            # Inform User of Unlink Via Direct Message
+            await user.send(
+                embed=embed_build(
+                    message=f"Successfully removed {name} from {user.name}#{user.discriminator}", 
+                    icon='🖇'
+                    )
+                )
+            return
+        logging.error('Linked account\'s account not present in server.')
     @unlink.error
     async def unlink_error(self, ctx, error):
         logging.debug(f"Unlink Command Error: {error}")
