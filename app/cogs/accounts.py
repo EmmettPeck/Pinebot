@@ -17,6 +17,7 @@ import random
 import string
 
 from discord.ext import commands
+import pymongo
 
 from embedding import embed_build
 from database import DB
@@ -41,85 +42,12 @@ def generateCode(length=5) -> str:
         out += digit
 
     return out
-# Account Database -------------------------------------------------------------
-class AccountsDB:
-
-    def __init__(self) -> None:
-        self.path = f'../../data/accounts/'
-        self.accounts = self.load_accounts()
-
-    def get_accounts(self) -> list:
-        """
-        Gets active Discord accounts
-        """
-        return self.accounts
-    
-    def find_account(self, id:int) -> dict:
-        """
-        Returns account corresponding with id
-
-        `id`:`int`
-            - The discord account id of the account to be found
-        """
-        for account in self.accounts:
-            if account.get('id') is id:
-                return account
-        logging.debug(f'find_account: {id} not found.')
-        return None
-
-    def load_accounts(self) -> list:
-        """
-        Returns list of accounts.
-
-        Loads accounts from filesystem self.path variable folder 
-        """
-        stats = []
-        try:
-            # Ensure directory existance
-            if not os.path.exists(self.path):
-                logging.debug(f"load_accounts creating file structure {self.path}")
-                os.makedirs(self.path)
-
-            # For file in folder
-            for item in os.listdir(self.path):
-                logging.debug(f"load_accounts loading item: {item}")
-                with open(self.path+item) as f:
-                    stats.append(json.load(f))
-        except FileNotFoundError:
-            logging.warning(f"No accounts found for load_accounts")
-        logging.debug(f"Stats: {stats}")
-        return stats
-
-    def add_account(self, id:int):
-        """
-        Adds a new user account from an id
-
-        `id`:`int`
-            - The discord account id of the account to add
-        """
-        logging.debug(f"Adding account {id}")
-        self.accounts.append(make_user_account(id))
-    
-    def save_account(self, id:int):
-        """
-        Saves account with corresponding id to filesystem
-
-        `id`:`int`
-            - The discord account id of the account to be saved
-        """
-
-        account = self.find_account(id)
-
-        logging.debug(f"Saving account {id}")
-        with open(self.path+str(id)+'.json', 'w') as f:
-            json.dump(account, f, indent=2)
 
 # Accounts Cog -----------------------------------------------------------------
 class Accounts(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.accountDB = AccountsDB()
         
     def add_link_key(self, cid, link_key:dict) -> bool:
         """
@@ -142,55 +70,52 @@ class Accounts(commands.Cog):
 
         # Fetch Relevant Database from Cog
         for cog in DB.get_game_cogs():
-            current = self.bot.get_cog(cog.split('.',1)[1].title())
-            if current == None: continue
+            cog_name = cog.split('.',1)[1].title()
+            query = DB.mongo['Servers'][cog_name].find_one({'cid':cid})
+            if query is None:
+                continue
 
-            # Loop searching for matching server cid, ensure player is on server
-            for server in current.servers:
-                if server.cid == cid:
-                    for player in server.statistics:
-                        try:
-                            if key_username == player['username']:
-                                server.link_keys.append(link_key)
-                                return True
-                        except KeyError as argument:
-                            logging.error(argument)
-                    logging.debug(f"add_link_key: player not found. {link_key}")
-                    return False
+            servers_id = query.get('_id')
+            link_key['servers_id'] = servers_id
+            server_name = query.get('name')
+
+            # Ensure Player is present in server
+            query = DB.mongo[cog_name][server_name].find_one({'username':key_username})
+            if query is None: 
+                logging.debug(f"add_link_key: player not found. {link_key}")
+                return False
+
+            # Add Key To Server
+            DB.mongo['Servers'][cog_name].update_one({'_id':servers_id},{'$addToSet':{link_key}})
+            return True
 
         logging.warning(f"add_link_key: No matching server to {cid} found.")
         return None
 
-    async def confirm_link(self, link_key:dict, server_name:str, uuid:str, game:str):
-        """
-        Successfully links a link_key account to requested user.
-        
-        Change gameaccountfile to include "linked" discord ID
-        Add a Read/Write Lock to all database files
-        """
-        account_id = link_key.get('id')
+    async def confirm_link(self, link_key:dict, uuid:str, game:str):
+        col = DB.mongo['Guilds']['Pineserver']
+        discord_id = link_key.get('id')
         username = link_key.get('username')
-        account = self.accountDB.find_account(account_id)
+        account = col.find_one({'id':discord_id})
+        account_id = account.get('_id')
         
         # Add new accounts
         if account is None:
-            self.accountDB.add_account(account_id)
-            account = self.accountDB.find_account(account_id)
-            if account is None:
-                logging.critical(f'confirm_link: Unable to find account after adding. {link_key}')
-                return
+            query = col.insert_one({make_user_account(discord_id)})
+            account_id = query.inserted_id
         
         # Add link
-        link = make_link_account(
-            server=server_name, username=username, uuid=uuid, game=game)
-        account['linked'].append(link)
+        link = make_link_account(username=username, uuid=uuid, game=game, _id=link_key['servers_id'])
         
-        self.accountDB.save_account(account_id)
+        query = col.update_one({'_id':account_id},{'$addToSet':{'linked':link}})
+        if query.acknowledged:
+            # Update linked tag in playerfile
+            DB.mongo['Servers'][game].update_one({'uuid':uuid,'username':username},{'$set':{'linked':account_id}})
 
-        # Inform User
-        user = await self.bot.fetch_user(link_key['id'])
-        await user.send(embed=embed_build(message=f"Successfully Linked {game} Account {link_key['username']}",icon="🔑"))
-        logging.info(f"Successfully linked {username} to {account_id}")
+            # Inform User
+            user = await self.bot.fetch_user(discord_id)
+            await user.send(embed=embed_build(message=f"Successfully Linked {game} Account {username}",icon="🔑"))
+            logging.info(f"Successfully linked {username} to {discord_id}")
 # COMMANDS ---------------------------------------------------------------------
 
 # LINK
@@ -204,11 +129,16 @@ class Accounts(commands.Cog):
 
         # Ensure is sent in a channel with a linked gameserver
         flag = False
-        for container in DB.get_containers():
-            if ctx.channel.id == container.get("channel_id"):
-                flag = True
+        for cog in DB.get_game_cogs():
+            cog_name = cog.split('.',1)[1].title()
+            query = DB.mongo['Servers'][cog_name].find_one({'cid':ctx.channel.id})
+            if query is None:
+                continue
+            flag = True
+            break
+        # If unlinked server
         if not flag:
-            logging.info(f"link command: server not appropriate")
+            logging.info(f"link command: channel not appropriate")
             await ctx.reply(
                 embed=embed_build(message="Please use command in a gameserver-linked channel."),
                 mention_author=False
@@ -216,25 +146,19 @@ class Accounts(commands.Cog):
             return
  
         # Check if is already linked to any account 
-            # (Ensures matching servername and username)
-        for account in self.accountDB.get_accounts():
-            try:
-                for subaccount in account['linked']:
-                    if (DB.get_server_name(cid=ctx.channel.id) == subaccount['server']) and (subaccount["username"] == name):
-                        user = await self.bot.fetch_user(account['id'])
-                        logging.info(f"link command: {name} already linked to {subaccount['username']}")
-                        
-                        # Inform user account is already linked
-                        await ctx.reply(
-                            embed=embed_build(
-                                message=f"Account {name} is already linked to {user.name}#{user.discriminator}", 
-                                icon='🖇'
-                            ),
-                            mention_author=False
-                        )
-                        return
-            except KeyError as e:
-                logging.error(f"Link Command: account link check failed: {e}")
+        for linked in DB.mongo['Guilds']['Pineserver'].find({'linked':{'username':name,'game':cog_name}}):
+            user = await self.bot.fetch_user(linked['id'])
+            logging.info(f"link command: {name} already linked to {user.name}")
+            
+            # Inform user account is already linked
+            await ctx.reply(
+                embed=embed_build(
+                    message=f"Account {name} is already linked to {user.name}#{user.discriminator}", 
+                    icon='🖇'
+                ),
+                mention_author=False
+            )
+            return
 
         link_key = generateCode()
         expires = datetime.utcnow().replace(tzinfo=timezone.utc)+timedelta(minutes=5)
@@ -261,7 +185,6 @@ class Accounts(commands.Cog):
                     icon="🔑"
                 )
             )
-        
         elif result == False: 
             logging.info(f"link command: {name} not recognized.")
             # Inform player that name was not recognized
@@ -273,7 +196,6 @@ class Accounts(commands.Cog):
                 ),
                 mention_author=False
             )
-        
         # Error Cases
         elif result == None:
             logging.error("link command: Server Not Found.")
@@ -303,42 +225,49 @@ class Accounts(commands.Cog):
        ' gameserver channel. Case Sensitive.'
     )
     async def unlink(self, ctx, name):
-        i = 0
+        acctcol = DB.mongo['Guilds']['Pineserver']
+        datadb = DB.mongo['Servers']
 
-        # Look for account in accounts, unlinking account if found
-        for account in self.accountDB.get_accounts():
-            try:
-                if ctx.author.id == account['id']: # Ensure account is authors
-                    for subaccount in account['linked']: 
-                        if (DB.get_server_name(cid=ctx.channel.id) == subaccount['server']) and (subaccount["username"] == name):
-                            user = await self.bot.fetch_user(account['id'])
-                            logging.debug(f'Unlinking account {name} from {user.name}#{user.discriminator}')
-
-                            self.accountDB.accounts[i]['linked'].remove(subaccount)
-                            self.accountDB.save_account(ctx.author.id)
-                            
-                            # Inform User Via Direct Message
-                            await user.send(
-                                embed=embed_build(
-                                    message=f"Successfully removed {name} from {user.name}#{user.discriminator}", 
-                                    icon='🖇'
-                                    )
-                                )
-                            return
-            except KeyError as e:
-                logging.error(f"Unlink Command: account link check failed: {e}")
-            i+=1
+        # Get account from author id
+        query = acctcol.find_one({'id':ctx.author.id})
+        if query is None:
+            await ctx.reply(
+                embed=embed_build(
+                    icon="⚠️",
+                    message=f"No account named `{name}` was found linked to"
+                    f" {ctx.author.name}#{ctx.author.discriminator}",
+                    timestamp=False
+                ),
+                mention_author=False
+            )
         
-        # Fallthrough Message, Inform in channel that no account was found.
-        await ctx.reply(
-            embed=embed_build(
-                icon="⚠️",
-                message=f"No account named `{name}` was found linked to"
-                f" {ctx.author.name}#{ctx.author.discriminator}",
-                timestamp=False
-            ),
-            mention_author=False
-        )
+        # Ensure linked account's account is linked to server 
+        for account in query['linked']:
+            col = datadb[account['game']]
+            query = col.find_one({'_id':account['servers_id']})
+            
+
+            if query is None: continue
+
+            acct_doc_id = query['servers_id']
+
+            for cid in query['cid']:
+                if cid == ctx.channel.id:
+                    # Remove link dict, Remove link_id from playerdata
+                    col.update_one({'_id':account['servers_id']},{'$set':{'servers_id':None}})
+                    acctcol.update_one({'_id':acct_doc_id},{'$pop':{"linked":account['servers_id']}})
+
+                    user = await self.bot.fetch_user(account['id'])
+                    logging.debug(f'Unlinked account {name} from {user.name}#{user.discriminator}')
+
+                    # Inform User Via Direct Message
+                    await user.send(
+                        embed=embed_build(
+                            message=f"Successfully removed {name} from {user.name}#{user.discriminator}", 
+                            icon='🖇'
+                            )
+                        )
+                    return
     @unlink.error
     async def unlink_error(self, ctx, error):
         logging.debug(f"Unlink Command Error: {error}")

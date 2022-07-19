@@ -3,11 +3,7 @@ messages.py
 By: Emmett Peck
 Message filtering and dictionary building from serverlogs for various MC versions/games
 """
-import logging
-import discord
 from enum import Enum
-from datetime import datetime
-from database import DB
 
 def split_first(split_str, character) -> tuple:
     """Splits by first instance of character. split_first('Hi[Emmett]','[') --> ['Hi','Emmett]']"""
