@@ -21,7 +21,7 @@ class Social(commands.Cog):
             return
 
         # Prevent hellos in mc channels because it's annoying
-        for col in DB.mongo['Servers']:
+        for col in DB.mongo['Servers'].list_collection_names():
             for channel in col.find():
                 for id in channel['linked']:
                     if message.channel.id == id:

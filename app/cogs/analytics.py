@@ -11,10 +11,9 @@ Version: July 1st, 2022
 from datetime import datetime, timedelta
 import logging
 from discord.ext import commands
-from more_itertools import last
 
 import analytics_lib
-from app.dictionaries import playtime_dict
+from dictionaries import playtime_dict
 from embedding import embed_build, embed_playtime
 from database import DB
 

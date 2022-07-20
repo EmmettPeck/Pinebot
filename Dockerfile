@@ -9,6 +9,7 @@ RUN pip3 install --no-cache --upgrade pip setuptools
 RUN pip install python-dotenv
 RUN pip install docker
 RUN pip install discord
+RUN python3 -m pip install "pymongo[srv]"
 
 # Copy Files
 ADD .env /

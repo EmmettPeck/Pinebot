@@ -15,9 +15,8 @@ from database import DB
 from dictionaries import get_msg_dict
 from embedding import embed_build
 from messages import MessageType, get_between, split_first
-from server import Server
 from username_to_uuid import UsernameToUUID
-from cogs.gamecog import GameCog, Identifier, class_name
+from cogs.gamecog import GameCog, Identifier
 
 class Minecraft(GameCog):
 
@@ -27,7 +26,7 @@ class Minecraft(GameCog):
     @commands.has_any_role(*DB.get_role_whitelist())
     async def whitelist(self, ctx, *, mess):
         ''' Whitelists <args> to corresponding server as is defined in DChannels if user has applicable role'''
-        server = DB.mongo['Servers'][class_name()].find_one({'cid':ctx.channel.id}) 
+        server = DB.mongo['Servers'][self.class_name()].find_one({'cid':ctx.channel.id}) 
         logging.info(f'{ctx.author} invoked >whitelist {mess}')
         response = self.send(server=server, command=f"whitelist add {mess}",logging=True)
         
@@ -47,7 +46,7 @@ class Minecraft(GameCog):
     @has_permissions(administrator=True)
     async def sendcmd(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
-        server = DB.mongo['Servers'][class_name()].find_one({'cid':ctx.channel.id}) 
+        server = DB.mongo['Servers'][self.class_name()].find_one({'cid':ctx.channel.id}) 
         logging.info(f"{ctx.author} invoked `>sendcmd {mess}` to {server['server']}")
         response = self.send(server=server, command=mess, log=True)
 
@@ -66,7 +65,7 @@ class Minecraft(GameCog):
     # List ---------------------------------------------------------------------
     @commands.command(name='list', help="Usage `>list` in desired corresponding channel.", brief="Lists online players.")
     async def list(self, ctx):
-        server = DB.mongo['Servers'][class_name()].find_one({'cid':ctx.channel.id}) 
+        server = DB.mongo['Servers'][self.class_name()].find_one({'cid':ctx.channel.id}) 
         response = self.send(server=server, command="list")
 # TODO EMBED RESPONSE, MOVE TO GET-PLAYER-LIST
         await ctx.message.delete()

@@ -10,14 +10,11 @@ Version: July 6th, 2022
 """
 
 from datetime import datetime, timedelta, timezone
-import json
 import logging
-import os
 import random
 import string
 
 from discord.ext import commands
-import pymongo
 
 from embedding import embed_build
 from database import DB

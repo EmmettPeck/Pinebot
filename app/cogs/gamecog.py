@@ -29,9 +29,6 @@ from hash import get_hash
 from dictionaries import get_msg_dict, make_statistics
 
 
-@classmethod
-def class_name(cls):
-    return cls.__name__
 
 class Identifier(Enum):
     """
@@ -49,7 +46,6 @@ class Identifier(Enum):
     NO_UUID_UNCHANGABLE = 4
     NO_UUID_CHANGABLE = 5
 
-@classmethod
 class GameCog(commands.Cog):
     """
     A class implementing the basic loops and instance methods used to integrate
@@ -69,6 +65,10 @@ class GameCog(commands.Cog):
         self.bot = bot
         self.load_servers()
 
+    @classmethod
+    def class_name(cls):
+        return cls.__name__
+
     @commands.Cog.listener()
     async def on_ready(self):
         for server in self.servers:
@@ -87,7 +87,7 @@ class GameCog(commands.Cog):
 
         # Noncentralized_Nonchangable: Search for dict by Username, return matching uuid
         if self.get_identifier() is Identifier.NONCENTRALIZED_UNCHANGABLE:
-            result = DB.mongo[class_name()][server['name']].find_one({'username':username})
+            result = DB.mongo[self.class_name()][server['name']].find_one({'username':username})
             if result is None:
                 logging.debug(f'get_uuid found no matching user for {username}')
                 return None
@@ -96,13 +96,13 @@ class GameCog(commands.Cog):
 
         # Centralized: Get uuid from name, search for matching uuid, update username if different
         if self.get_identifier() is Identifier.CENTRALIZED:
-            result = DB.mongo[class_name()][server['name']].find_one({'uuid':uuid})
+            result = DB.mongo[self.class_name()][server['name']].find_one({'uuid':uuid})
             if result is None:
                 logging.debug(f'get_uuid found no matching uuid for {username}:{uuid}')
                 return uuid
             else:
                 if result['username'] != username:
-                    DB.mongo[class_name()][server['name']].update_one({'_id':result['_id']},{"$set":{'username':username}}) 
+                    DB.mongo[self.class_name()][server['name']].update_one({'_id':result['_id']},{"$set":{'username':username}}) 
                 return uuid
         return None
 
@@ -249,18 +249,18 @@ class GameCog(commands.Cog):
                 f"{len(server['online_players'])}/"
                 f"{server['player_max'] if server['player_max'] > -1 else 'ꝏ'}"
                 f" | Status: {container_status}")
-        logging.debug(f"Updated Header {server['name']}.{class_name()}")
+        logging.debug(f"Updated Header {server['name']}.{self.class_name()}")
 
 
 #============================Core Methods=======================================
 # Contains scheduled tasks, boilerplate read/send, queue handling
     def load_servers(self):
         """
-        Loads server configuration from database by class_name()
+        Loads server configuration from database by self.class_name()
         """
         self.servers = []
         
-        self.server_col = DB.mongo['Servers'][class_name()] 
+        self.server_col = DB.mongo['Servers'][self.class_name()] 
         for document in self.server_col.find():
             self.servers.append(document)
 
@@ -346,7 +346,7 @@ class GameCog(commands.Cog):
         logging.info(f"Sent {command} to {server['name']}: {resp_str}")
 
         if log:
-            logging.info(f"Sent {command} to {server['name']}.{class_name()}")
+            logging.info(f"Sent {command} to {server['name']}.{self.class_name()}")
             logging.info(f"Response: {resp_str}")
         
         return resp_str
@@ -367,7 +367,7 @@ class GameCog(commands.Cog):
         accounts = self.bot.get_cog("Accounts")
 
 # Account Link TODO IMPROVE ACCESS QUANTITY (CURRENTLY ONCE PER MESSAGE) --> Reduce to only pull link_keys?
-        for key in DB.mongo['Servers'][class_name()].find_one({'_id':server['id']}['link_keys']):
+        for key in DB.mongo['Servers'][self.class_name()].find_one({'_id':server['id']}['link_keys']):
             try:
                 t = datetime.utcnow().replace(tzinfo=timezone.utc)
                 
@@ -382,15 +382,15 @@ class GameCog(commands.Cog):
                             link_key=key,
                             server_name=server['name'],
                             uuid=self.get_uuid(username=key['username']),
-                            game=class_name())
+                            game=self.class_name())
                         server['link_keys'].remove(key)
-                        DB.mongo['Servers'][class_name()].update_one({'_id':server['id']},{'$pull':{'link_keys':key}})
+                        DB.mongo['Servers'][self.class_name()].update_one({'_id':server['id']},{'$pull':{'link_keys':key}})
                         return
 
                 # Throw out expired keys
                 elif t >= key['expires']:
                     logging.debug(f"link-key removing old key {key} at {t}")
-                    DB.mongo['Servers'][class_name()].update_one({'_id':server['id']},{'$pull':{'link_keys':key}})
+                    DB.mongo['Servers'][self.class_name()].update_one({'_id':server['id']},{'$pull':{'link_keys':key}})
 
             except KeyError as e:
                 logging.error(e)
@@ -423,33 +423,33 @@ class GameCog(commands.Cog):
         time = connection['time']
 
         # Find Player
-        query = DB.mongo[class_name()][server['name']].find_one({'username':user, 'uuid':uuid})
+        query = DB.mongo[self.class_name()][server['name']].find_one({'username':user, 'uuid':uuid})
         if query is None:
             # Add Player
-            DB.mongo[class_name()][server['name']].insert_one(make_statistics(username=user, uuid=uuid))
-            query = DB.mongo[class_name()][server['name']].find_one({'username':user, 'uuid':uuid})
+            DB.mongo[self.class_name()][server['name']].insert_one(make_statistics(username=user, uuid=uuid))
+            query = DB.mongo[self.class_name()][server['name']].find_one({'username':user, 'uuid':uuid})
             if query is None:
                 logging.critical(f"Unable to upsert and find new user: {user}:{uuid} with query:{query}")
                 return
         id = query['_id']
         
         # Add Connect Events w/ fixing logic
-        recentest_is_join = analytics_lib.is_recentest_join(col=DB.mongo[class_name()][server['name']], id=id)
+        recentest_is_join = analytics_lib.is_recentest_join(col=DB.mongo[self.class_name()][server['name']], id=id)
 
         # Based on recentest is join, prevents double joins/leaves which would otherwise mess up calculations later
         # If Adding Join and the most recent entry is a join, remove previous join
         if join == True:
             if recentest_is_join == True:
                 logging.debug(f'Handle_connection: Popping join from {user}')
-                DB.mongo[class_name()][server['name']].update_one({'_id':id}, {'$pop': {'joins': -1}})
+                DB.mongo[self.class_name()][server['name']].update_one({'_id':id}, {'$pop': {'joins': -1}})
             logging.debug(f'Handle_connection: Adding join to {user} ')
-            DB.mongo[class_name()][server['name']].update_one({'_id':id}, {'$addToSet': {'joins':time}})
+            DB.mongo[self.class_name()][server['name']].update_one({'_id':id}, {'$addToSet': {'joins':time}})
 
         # If adding Leave and the most recent entry is a leave, ignore adding leave
         elif join == False:  
             if recentest_is_join == True:
                 logging.debug(f'Handle_connection: Adding leave to {user}')
-                DB.mongo[class_name()][server['name']].update_one({'_id':id}, {'$addToSet': {'leaves':time}})
+                DB.mongo[self.class_name()][server['name']].update_one({'_id':id}, {'$addToSet': {'leaves':time}})
 
         # Online List Logging
         if join and not (user in server['online_players']):
@@ -488,7 +488,7 @@ class GameCog(commands.Cog):
         if message.author.bot or message.content.startswith('>'): return
         f = self.get_username_fixes()
         msg = f"{f[0]}{message.author.name}{f[1]} {message.content}"
-        logging.info(f'{server["name"]}.{class_name()}: "{msg}"')
+        logging.info(f'{message.channel.name}: "{msg}"')
         
         for server in self.servers:
             if message.channel.id == server['cid']:

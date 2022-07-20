@@ -25,7 +25,7 @@ class DB:
         uri = "mongodb+srv://pinebot.hzrfoqe.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509&retryWrites=true&w=majority"
         self.mongo = MongoClient(uri,
                      tls=True,
-                     tlsCertificateKeyFile='testenv/X509-cert-2940582018631408693.pem')
+                     tlsCertificateKeyFile='data/X509-cert-2940582018631408693.pem')
         
         # Docker
         self.client = docker.from_env()
