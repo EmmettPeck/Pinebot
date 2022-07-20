@@ -93,7 +93,7 @@ def make_user_account(id:int):
         'linked':[]
     }
 
-def make_link_account(username:str,uuid:str,game:str,_id):
+def make_link_account(username:str,uuid:str,game:str,server_name,_id):
     """
     Returns a linked account dictionary.
 
@@ -114,11 +114,13 @@ def make_link_account(username:str,uuid:str,game:str,_id):
         'username':username,
         'UUID':uuid,
         'game':game,
+        'server_name':server_name,
         'servers_id':_id
     }
 
-def playtime_dict(server_name:str, last_connected, playtime, first_join, game):
+def playtime_dict(server_name:str, username, last_connected, playtime, first_join, game):
     return {
+        'username':username,
         'servername' : server_name,
         'last_connected': last_connected,
         'playtime' : playtime,

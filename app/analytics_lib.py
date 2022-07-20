@@ -56,7 +56,7 @@ def is_recentest_join(col:collection.Collection, id:ObjectId) -> bool:
         return False
 
 # Playtime -----------------------------------------------------------------------------------------------------------------------------------------------
-def calculate_playtime(col:collection.Collection, id:ObjectId, server_name:str) -> datetime:
+def calculate_playtime(col:collection.Collection, id:ObjectId) -> datetime:
     """
     Intelligently calculates playtime of a server for a player.
     Usage: calculate_playtime(server.statistics) -> playtime
@@ -73,12 +73,11 @@ def calculate_playtime(col:collection.Collection, id:ObjectId, server_name:str) 
     c_index = statistics['calculated_index']
     joinList = statistics['joins']
     leaveList = statistics['leaves']
-    package = playtime_dict(
-        server_name=server_name,
-        first_join=joinList[0],
-        last_connected=leaveList[-1],
-        playtime=None
-    )
+    package = {
+        'first_join':joinList[0],
+        'last_connected':leaveList[-1],
+        'playtime':None
+    }
     # Return timedelta if no joins in list
     if len(joinList) == 0: return timedelta()
 

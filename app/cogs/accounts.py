@@ -76,8 +76,10 @@ class Accounts(commands.Cog):
                 continue
 
             servers_id = query.get('_id')
-            link_key['servers_id'] = servers_id
             server_name = query.get('name')
+            link_key['servers_name'] = server_name
+            link_key['servers_id'] = servers_id
+            
 
             # Ensure Player is present in server
             query = DB.mongo[cog_name][server_name].find_one({'username':key_username})
@@ -105,7 +107,7 @@ class Accounts(commands.Cog):
             account_id = query.inserted_id
         
         # Add link
-        link = make_link_account(username=username, uuid=uuid, game=game, _id=link_key['servers_id'])
+        link = make_link_account(username=username, uuid=uuid, game=game, server_name=link_key['server_name'], _id=link_key['servers_id'])
         
         query = col.update_one({'_id':account_id},{'$addToSet':{'linked':link}})
         if query.acknowledged:
@@ -227,14 +229,13 @@ class Accounts(commands.Cog):
     async def unlink(self, ctx, name):
         acctcol = DB.mongo['Guilds']['Pineserver']
 
-        # Match cid to server
+        # Match cid to server TODO Potentially Useless? {First Two Comment Blocks}
         flag = False
         for cog in DB.get_game_cogs():
             cog_name = cog.split('.',1)[1].title()
             query = DB.mongo['Servers'][cog_name].find_one({'cid':ctx.channel.id})
             if query is None:
                 continue
-            server_name = query['name']
             flag = True
             break
         # Improper Channel Catch
@@ -263,7 +264,7 @@ class Accounts(commands.Cog):
         # Ensure linked account's account is linked to server 
         for account in query['linked']:
             # Attempt to find PlayerData in server
-            col = DB.mongo[account['game']][server_name]
+            col = DB.mongo[account['game']][account['server_name']]
             if query is None: continue
 
             # Get ID of PlayerData document from Account document

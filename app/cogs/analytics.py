@@ -11,15 +11,64 @@ Version: July 1st, 2022
 from datetime import datetime, timedelta
 import logging
 from discord.ext import commands
+from more_itertools import last
 
 import analytics_lib
+from app.dictionaries import playtime_dict
 from embedding import embed_build, embed_playtime
+from database import DB
 
 
 class Analytics(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+
+    async def plt(self, ctx, discord_id):
+        acctcol = DB.mongo['Guilds']['Pineserver']
+
+        query = acctcol.find_one({'linked':{'id':discord_id}})
+        if query is None:
+            # Unlinked Account Message
+            await ctx.reply(
+                embed=embed_build(
+                    icon="⚠️",
+                    message="Unlinked Discord Account",
+                    description="We can't fetch your total playtime until you link a game account to your discord user. Link accounts using `>link`. See '>help link' for more information."
+                ),
+                mention_author=False
+            )
+            return
+        
+        dicts = self.fetch_total(query)
+        await ctx.send(embed=embed_playtime(dicts))
+
+    def fetch_total(self, account:dict):
+        list = []
+        
+        for link in account['linked']:
+            # For each game, search every server for user. Append each servername, playtime, game, and first join to a list as a dict to be sorted by playtime command
+            # Search each server for player
+            col = DB.mongo[link['game']][link['server_name']]
+            query = col.find_one({'_id':link['servers_id']})
+            if query is None: continue
+
+            # Calculate Playtime
+            package = analytics_lib.calculate_playtime(
+                    col=col,
+                    id=link['servers_id'],
+            )
+
+            list.append(playtime_dict(
+                username=link['username'], #TODO Update account namechange in GameCog Get_UUID
+                server_name=link['servers_name'],
+                game=link['game'],
+                playtime=package['playtime'],
+                first_join=package['first_join'],
+                last_connected=package['last_connected']
+                )
+            )
+        return list
 
     @commands.command(
         name='playtime', 
@@ -32,91 +81,42 @@ class Analytics(commands.Cog):
         Prints playtime information to channel
         
         Gets playtime for requesting user if no args provided, 
-        otherwise gathers playtime for other user. If server is provided,
-        Gathers playtime of username or matching UUID in that server.
-
-        Parameter ctx: discord channel used by discord.py
-        Preconditon: ctx is a discord channel
-
-        Parameter name: Username to search for in server if provided, 
-        otherwise looks for discord user w/ linked accounts.
-        Precondition: name is a str
-
-        Parameter server: Server to get playtime from.
-        Precondition: server is an str
+        gathers playtime for referenced users. In linked server, searches for 
+        playtime of specific user. If server is provided, gathers playtime of 
+        username or matching UUID in that server. (Leverage getUUID)
         """
         logging.debug(f"Gathering playtime for {name} {server}")
         
         # If name not provided, check for linked accounts, if none, return
         if name == None:
-            await ctx.send(
-                "Please provide a playername,"
-                " >playertime <name> <optional-server>")
-            return
+            await self.plt(ctx.author.id)
 
-        # If server not provided, prompt user and return.
-        if server == None:
-            await ctx.send(
-                "Please provide a server, "
-                ">playertime <name> <optional-server>")
-            return
+        # If message mentions a user (Total Linked Accounts)
+        elif ctx.message.mentions != None:
+            # Get mentioned user account dict, then gather playtime of 
+            await self.plt(ctx.message.mentions[0].id)
 
-        # TODO If server not provided, print total w/ list of top servers
-        if server == None:
-            total = analytics_lib.handle_playtime(
-                bot=self.bot,
-                server_name=server, 
-                request=name)
-            await ctx.send(
-                embed = embed_build(
-                reference=ctx.author,
-                message=
-                    f"{name} has played for `{analytics_lib.td_format(total)}` "
-                    "across all servers."))
-            return
+        # If Server Not Provided (User from Linked Channel)
+        elif server == None:
+            # Attempt get servername from sent channel
+            
+            # If so, call function to send playtime from username & servername
 
-        # Look for server. found? print total: prompt user of input error. -----
+            # If not, unlinked channel or no server provided
+            if not server:
+                # Tell user to use in linked channel, mention a user, or specify a servername
+                await ctx.reply(
+                    embed = embed_build(
+                        icon="",
+                        message="Incorrect Command Arguments",
+                        description="Sent in an unlinked channel, or no server was provided.\nSee `>help playtime` for more information."
+                    ),
+                )
+
+        # Get Playtime by Username & Server
         else: 
-            # Get Playtime From Server
-            single = analytics_lib.handle_playtime(
-                bot=self.bot, 
-                request=name,
-                server_name=server)
-
-            # Print Playtime
-            if single:
-                await ctx.send(
-                    embed = embed_playtime(
-                        reference=ctx.author, 
-                        username=name,
-                        total_playtime=single.get('playtime'), 
-                        dict_list=[single]))
-                logging.debug("Playtime command complete")
-                return
-
-            # If Playtime present, but empty, prompt user
-            if single == timedelta():
-                await ctx.send(
-                    embed = embed_build(
-                        reference=ctx.author,
-                        message=
-                        "Player & Server recognized, yet no tengo playtime on `"
-                        f"{server}`."))
-
-            # If None
-            elif single == None:
-                await ctx.send(
-                    embed = embed_build(
-                        reference=ctx.author,
-                        message=
-                        f"Either player or server not found. Are you sure `"
-                        f"{server}` is a server and `{name}` has played on that" 
-                        "server? Playernames and servernames are case sensitive"))
-
-            # For other false evaluating conditons, notify developer.
-            else:
-                logging.error(f"ERROR: Other false evaluating condition in analytics single == {single}")
-
+            # Call function to send playtime from username & servername
+            pass
 def setup(bot):
     """
     Setup conditon for discord.py cog

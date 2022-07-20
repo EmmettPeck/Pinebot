@@ -98,10 +98,12 @@ def embed_playtime(
         timestamp=datetime.utcnow().replace(tzinfo=timezone.utc),
         color=discord.Color.dark_purple())
 
+    # TODO Sort by game & total playtime
+
     # Add Top Server Dicts
     for dictionary in dict_list:
         server_name = dictionary.get('servername')
-        #last_con = dictionary.get('last_connected')
+        last_con = dictionary.get('last_connected')
         playtime = dictionary.get('playtime')
         first_join = dictionary.get('first_join')
 
