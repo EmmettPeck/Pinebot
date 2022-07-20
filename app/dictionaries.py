@@ -6,7 +6,7 @@ is looked for rather than "username". Additionally, having in one file simplifys
 streamlining keys
 
 Authors: Emmett Peck (EmmettPeck)
-Version: July 1st, 2022
+Version: July 19th, 2022
 """
 
 from datetime import datetime, timedelta
@@ -124,4 +124,20 @@ def playtime_dict(server_name:str, last_connected, playtime, first_join, game):
         'playtime' : playtime,
         'first_join' : first_join,
         'game' : game
+    }
+
+def build_server(name:str, game:str, version:str, docker:str, cid:list, ip:str, description:str, hidden:bool)->dict:
+    return {
+        "name":name,                # Server Name
+        "game":game,                # Game (Ie: Minecraft)
+        "version":version,          # Version (Ie: 1.18, 1.19)
+        "docker_name":docker,       # Docker Name
+        "cid":cid,                  # Channel ID List
+        "ip":ip,                    # IP to display in the server-list
+        "description":description,  # Description to display in the server-list
+        "hidden":hidden,            # Whether or not to display in the server list
+        "active" : True,            # Determines whether or not the server is watched
+        "online_players": list(),   # List of online players
+        "player_max": -1,           # Max Players (Default -1 for ∞)
+        "link_keys": list()         # Codes to check against new msgs
     }

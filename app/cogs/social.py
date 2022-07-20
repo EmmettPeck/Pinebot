@@ -1,4 +1,9 @@
-"""Social Cog --- Hello!"""
+"""
+Social Cog --- Hello!
+
+Authors: Emmett Peck (EmmettPeck)
+Version: July 19th, 2022
+"""
 
 from discord.ext import commands
 
@@ -16,9 +21,11 @@ class Social(commands.Cog):
             return
 
         # Prevent hellos in mc channels because it's annoying
-        for channel in DB.get_containers():
-            if message.channel.id == channel.get("channel_id"):
-                return
+        for col in DB.mongo['Servers']:
+            for channel in col.find():
+                for id in channel['linked']:
+                    if message.channel.id == id:
+                        return
 
         if message.content.startswith('hello') | message.content.startswith('hi') | message.content.startswith('Hello')| message.content.startswith('Hi'):
             await message.channel.send('Hello!')

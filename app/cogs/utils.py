@@ -1,4 +1,9 @@
-"""A cog for discord.py that carries an assortment of utility commands for Pineserver"""
+"""
+A cog for discord.py that carries an assortment of utility commands for Pineserver
+
+Authors: Emmett Peck (EmmettPeck)
+Version: July 19th, 2022
+"""
 from discord.ext import commands
 
 
@@ -19,8 +24,8 @@ class Utilities(commands.Cog):
     @commands.command(name='serverlist', help="Lists all currently registered servers, whitelist may be required to join", brief="Lists all pineserver.net servers")
     async def server_list(self, ctx):
         out_dict = []
-        for server in DB.get_containers():
-            if server.get("hidden") == False:
+        for col in DB.mongo['Servers'].list_collection_names():
+            for server in col.find({"hidden":True}):
                 out_dict.append({'name':server.get('name'),'desc':server.get('description'),'ip':server.get('ip'),'version':server.get('version')})
 
         await ctx.send(embed=embed_server_list(reference=ctx.author,input=out_dict))
