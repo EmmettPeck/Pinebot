@@ -63,7 +63,9 @@ class GameCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
+        self.contexts=list()
         self.load_servers()
+        self.read_messages.start()
 
     @classmethod
     def class_name(cls):
@@ -73,6 +75,9 @@ class GameCog(commands.Cog):
     async def on_ready(self):
         for server in self.servers:
             await self.header_update(server=server)
+    
+    def cog_unload(self):
+        self.read_messages.cancel()
 
 #===========================To Be Overloaded====================================
 #   Functions to be overloaded by children for unique GameCog implementations
@@ -232,6 +237,7 @@ class GameCog(commands.Cog):
     
     async def update_channel_header(self, server:dict, container_status:str):
         """
+
         Uses implemented formatting to update linked channel heading.
 
         Contains formatting for channel_header, overload this to change.
@@ -243,13 +249,14 @@ class GameCog(commands.Cog):
         `container_status` : `str`
             -- current container status
         """
-        ctx = self.bot.get_channel(server.cid)
-        await ctx.edit(
-            topic=f"{server['name']} | {server['version']} | "
-                f"{len(server['online_players'])}/"
-                f"{server['player_max'] if server['player_max'] > -1 else 'ꝏ'}"
-                f" | Status: {container_status}")
-        logging.debug(f"Updated Header {server['name']}.{self.class_name()}")
+        for cid in server['cid']:
+            ctx = self.bot.get_channel(cid)
+            await ctx.edit(
+                topic=f"{server['name']} | {server['version']} | "
+                    f"{len(server['online_players'])}/"
+                    f"{server['player_max'] if server['player_max'] > -1 else 'ꝏ'}"
+                    f" | Status: {container_status}")
+            logging.debug(f"Updated Header {server['name']}.{self.class_name()}")
 
 
 #============================Core Methods=======================================
@@ -292,31 +299,39 @@ class GameCog(commands.Cog):
         if not flag:
             self.contexts.append(new_context)
             logging.debug(f'Context not found in {self.contexts}')
-            self.read(server)
+            await self.read(server)
             return
 
         # Stream Logs
         container = DB.client.containers.get(server['docker_name'])
-        for log in container.logs(since=context['last'], stream=True):
-            # Check if it's an empty byte object, if so, set context and return
-            if log == bytes():
-                i = 0
-                for c in self.contexts:
-                    try:
-                        if c['name'] == server['name']:
-                            self.contexts[i] = new_context
-                    except KeyError:
-                        pass
-                    i+=1
-                return
-            
-            log = log.decode(encoding="utf-8", errors="ignore")
-            log_hash = get_hash(log)
-            if log_hash in context['hashes']:
-                continue
-            new_context['hashes'].append(log_hash)
-
-            await self.filter(message=log, server=server)
+        logs =  container.logs(since=context['last'], stream=True)
+        while True:
+            try:
+                log = next(logs)
+                log = log.decode(encoding="utf-8", errors="ignore")
+                logging.debug(f"Log: {log}, {type(log)}")
+                
+                log_hash = get_hash(log)
+                if log_hash in context['hashes']:
+                    continue
+                new_context['hashes'].append(log_hash)
+                await self.filter(message=log, server=server)
+            except StopIteration:
+                logging.debug("Breaking")
+                break
+        
+        # Update Contexts
+        i = 0
+        for c in self.contexts:
+            try:
+                if c['name'] == server['name']:
+                    logging.debug(f"Updating context: {new_context}")
+                    self.contexts[i] = new_context
+                    break
+            except KeyError:
+                pass
+            i+=1
+        print(f"Exiting Loop w/ context {self.contexts[i]}")
 
     def send(self, server:dict, command:str, log:bool=False, filter=True) -> str: 
         """
@@ -363,11 +378,10 @@ class GameCog(commands.Cog):
         `ctx`:``
             - The channel corresponding to the server
         """
-        ctx = self.bot.get_channel(server['cid'])
         accounts = self.bot.get_cog("Accounts")
 
 # Account Link TODO IMPROVE ACCESS QUANTITY (CURRENTLY ONCE PER MESSAGE) --> Reduce to only pull link_keys?
-        for key in DB.mongo['Servers'][self.class_name()].find_one({'_id':server['id']}['link_keys']):
+        for key in DB.mongo['Servers'][self.class_name()].find({'_id':server['_id']}, {'link_keys'}):
             try:
                 t = datetime.utcnow().replace(tzinfo=timezone.utc)
                 
@@ -381,7 +395,7 @@ class GameCog(commands.Cog):
                         await accounts.confirm_link(
                             link_key=key,
                             server_name=server['name'],
-                            uuid=self.get_uuid(username=key['username']),
+                            uuid=self.get_uuid(server=server, username=key['username']),
                             game=self.class_name())
                         server['link_keys'].remove(key)
                         DB.mongo['Servers'][self.class_name()].update_one({'_id':server['id']},{'$pull':{'link_keys':key}})
@@ -396,11 +410,13 @@ class GameCog(commands.Cog):
                 logging.error(e)
                 continue
                 
-        # Send Messages
-        logging.info(f"Message {server['name']}:{message}")
-        await ctx.send(embed=embed_message(
-            msg_dict=message,
-            username_fixes=self.get_username_fixes()))
+        # Send Messages To All Linked Channels
+        for cid in server['cid']:
+            ctx = self.bot.get_channel(cid)
+            logging.info(f"Message {server['name']}:{message}")
+            await ctx.send(embed=embed_message(
+                msg_dict=message,
+                username_fixes=self.get_username_fixes()))
 
     async def handle_connection(self, server:dict, connection:dict):
         """
@@ -419,7 +435,7 @@ class GameCog(commands.Cog):
         
         # Find Player Index
         user = connection['username']
-        uuid = self.get_uuid(user)
+        uuid = self.get_uuid(server=server, username=user)
         time = connection['time']
 
         # Find Player
@@ -473,7 +489,7 @@ class GameCog(commands.Cog):
         
         Manages chat-link functionality from servers->discord.
         """
-        await asyncio.gather(self.read(server) for server in self.servers)
+        await asyncio.gather(*[self.read(server) for server in self.servers])
     @read_messages.before_loop
     async def before_read_messages(self):
         await self.bot.wait_until_ready() 

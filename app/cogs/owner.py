@@ -44,19 +44,24 @@ class OwnerCog(commands.Cog):
             docker=docker_id,
             ip=ip,
             description=description,
-            cid = ctx.channel.id,
+            cid = [ctx.channel.id],
             hidden = True
         )
 
         # TODO Ensure servername not taken
 
-        DB.mongo['Servers'][game].insert_one({},{new_server})
+        # TODO Ensure game exists (Upsert collection on cogstart?)
 
+        DB.mongo['Servers'][game].insert_one(new_server)#
         # TODO Update Cog
 
         await ctx.send(f"Server {new_server} Added Successfully")
         print(f"Server {new_server} Added Successfully")
     
+        # TODO Delete add message
+
+        # TODO Print "Beginning of channel" header
+
     @commands.command(
         name="remserver", 
         brief=">remserver <cog:version>",

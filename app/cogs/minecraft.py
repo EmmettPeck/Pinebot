@@ -47,6 +47,7 @@ class Minecraft(GameCog):
     async def sendcmd(self, ctx, *, mess):
         ''' Sends <args> as /<args> to corresponding server as is defined in DChannels if user has applicable role'''
         server = DB.mongo['Servers'][self.class_name()].find_one({'cid':ctx.channel.id}) 
+
         logging.info(f"{ctx.author} invoked `>sendcmd {mess}` to {server['server']}")
         response = self.send(server=server, command=mess, log=True)
 
@@ -75,13 +76,13 @@ class Minecraft(GameCog):
             await ctx.send(embed=embed_build("Server not found. Use command only in 'Minecraft' text channels."))
 
 # OVERLOADS ----------------------------------------------------------------------------------
-    def get_uuid(self, username:str):
+    def get_uuid(self, server:dict, username:str):
         """Get player UUID from username"""
         if username == None: return None
 
         uuid = UsernameToUUID(username).get_uuid()
 
-        return super().get_uuid(username=username, uuid=uuid)
+        return super().get_uuid(server=server, username=username, uuid=uuid)
 
     def get_identifier(self)-> Identifier:
         return Identifier.CENTRALIZED
@@ -156,7 +157,7 @@ class Minecraft(GameCog):
         return False
 
     # Filter--------------------------------------------------------------------------------------------------------------------------------------------
-    def filter(self, server:dict, message:str, ignore=False):
+    async def filter(self, server:dict, message:str, ignore=False):
         """ 
         OVERLOAD: Minecraft 1.19 Filter
         Filters logs by to gameversion, adding leaves/joins to connectqueue and messages to message queue
@@ -209,8 +210,8 @@ class Minecraft(GameCog):
         # If Not Ignore, Messages are sent and accounted for playtime
         if post:
             if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                self.handle_connect(server=server, connection=post)
-            self.handle_message(server=server, message=post)
+                await self.handle_connection(server=server, connection=post)
+            await self.handle_message(server=server, message=post)
 
 # Deaths--------------------------------------------------------------------------------------------------------------------------------------------
 class Death:

@@ -17,7 +17,7 @@ class Factorio(GameCog):
     def get_identifier(self)-> Identifier:
         return Identifier.NO_UUID_CHANGABLE
 
-    def filter(self, server:dict, message:str):
+    async def filter(self, server:dict, message:str):
         """
         OVERLOAD: Factorio:Latest
         Filters logs by version, adding leaves/joins to connectqueue and messages to message queue
@@ -49,8 +49,8 @@ class Factorio(GameCog):
         # If Not Ignore, Messages are sent and accounted for playtime
         if post:
             if post.get('type') == MessageType.JOIN or post.get('type') == MessageType.LEAVE:
-                self.handle_connect(server=server, connection=post)
-            self.handle_message(server=server, message=post)
+                await self.handle_connection(server=server, connection=post)
+            await self.handle_message(server=server, message=post)
 
 def setup(bot):
     bot.add_cog(Factorio(bot))

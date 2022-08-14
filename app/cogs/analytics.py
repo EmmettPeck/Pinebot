@@ -88,12 +88,12 @@ class Analytics(commands.Cog):
         
         # If name not provided, check for linked accounts, if none, return
         if name == None:
-            await self.plt(ctx.author.id)
+            await self.plt(ctx, ctx.author.id)
 
         # If message mentions a user (Total Linked Accounts)
         elif ctx.message.mentions != None:
             # Get mentioned user account dict, then gather playtime of 
-            await self.plt(ctx.message.mentions[0].id)
+            await self.plt(ctx, ctx.message.mentions[0].id)
 
         # If Server Not Provided (User from Linked Channel)
         elif server == None:
