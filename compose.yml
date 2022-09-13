@@ -1,0 +1,31 @@
+version: "3.3"
+
+services:
+  pinebot:
+    image: pinebot:latest
+    volumes:
+    # Local Data
+    - /home/${USER}/Pinebot/data:/data
+    # Docker Socket Data
+    - "/var/run/docker.sock:/var/run/docker.sock"
+    - "/usr/bin/docker:/usr/bin/docker"
+    - "/usr/lib/libdevmapper.so.1.02:/usr/lib/libdevmapper.so.1.02"
+    # Timezone persistance
+    - "/etc/timezone:/etc/timezone:ro" 
+    - "/etc/localtime:/etc/localtime:ro"
+    restart: always
+  mc:
+    image: itzg/minecraft-server:latest
+    ports:
+      - "25565:25565"
+    environment:
+      EULA: "TRUE"
+      VERSION: "1.19"
+      
+      # RCON (Required for sending commands)
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "YOUR-PASSWORD-HERE"
+      RCON_PORT: 25575
+    volumes:
+    - /home/${USER}/Pinebot/mc:/data
+    restart: unless-stopped
