@@ -28,13 +28,12 @@
 
 > This project is being rewritten with [pycord](https://github.com/Pycord-Development/pycord) after [discord.py](https://github.com/Rapptz/discord.py) was deprecated; Some features may be outdated or not work as intended.
 
-Pinebot is a Discord bot which reads and reacts to events on connected Docker game servers. From linking channels by passing new messages to other mediums, keeping track of when players leave and join, to providing a secure way of passing commands and messages to a gameserver console through use of role restricted Discord commands.
+Pinebot is a Discord bot which reads and reacts to events on Docker game servers. Pinebot links communication channels by passing new messages to other mediums, calculates playtime by keeping track of when players leave and join, and provides a secure method of interacting with a gameserver console through use of role restricted Discord commands.
 
 ## Key Features
 * Combines chatrooms across platforms
 * Playtime logging 
-* Remote console access
-* Conditional Rolebased Console access
+* Configurable remote console access
 * Configurable Docker log filtering
 
 ## Set Up
@@ -63,7 +62,7 @@ $ docker compose compose.yml up -d
 
 ### Linking A Channel
 In a server with a bot connected to your bot token, link the running gameserver container to a Discord channel. 
-`>addserver <name> <Minecraft:version> <container_name> <ip> <description>`
+`>addserver <name> <Minecraft:version> <container_name> <ip> <description>`. This can only be done by a Discord server's owner.
 
 >**Example:** `>addserver example Minecraft:1.19 examples_mc localhost:25565 this is an example!`
 
@@ -80,6 +79,7 @@ In a server with a bot connected to your bot token, link the running gameserver 
 - `>list` lists a linked server's online players
 - `>sendcmd <command>` sends command to server console. Only usable by server administrators.
 - `>whitelist <playername>` whitelists playername on linked server
+- `>serverlist` lists unhidden servers in a neatly formatted message.
 
 ## Development
 Development priority is going to rewriting the project to use MongoDB for more efficient data storage and Pycord for additional discord features.
