@@ -5,7 +5,7 @@ services:
     image: pinebot:latest
     volumes:
     # Local Data
-    - /home/${USER}/Pinebot/data:/data
+    - ~/${USER}/Pinebot/data:/data
     # Docker Socket Data
     - "/var/run/docker.sock:/var/run/docker.sock"
     - "/usr/bin/docker:/usr/bin/docker"
@@ -27,5 +27,5 @@ services:
       RCON_PASSWORD: "YOUR-PASSWORD-HERE"
       RCON_PORT: 25575
     volumes:
-    - /home/${USER}/Pinebot/mc:/data
+    - ~/${USER}/Pinebot/mc:/data
     restart: unless-stopped
