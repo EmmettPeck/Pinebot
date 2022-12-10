@@ -5,7 +5,7 @@ services:
     image: pinebot:latest
     volumes:
     # Local Data
-    - ~/${USER}/Pinebot/data:/data
+    - pinebot-data:/data
     # Docker Socket Data
     - "/var/run/docker.sock:/var/run/docker.sock"
     - "/usr/bin/docker:/usr/bin/docker"
@@ -30,5 +30,10 @@ services:
       RCON_PASSWORD: "${RCONPASS}"
       RCON_PORT: 25575
     volumes:
-    - ~/${USER}/Pinebot/mc:/data
+    - minecraft-data:/data
     restart: unless-stopped
+volumes:
+  pinebot-data:
+    external: false
+  minecraft-data:
+    external: false
