@@ -4,10 +4,11 @@ Module containing singleton class for data access across multiple discord cogs.
 This module handles file loading and saving for settings information for PineBot
 
 Authors: Emmett Peck (EmmettPeck)
-Version: July 1st, 2022
+Version: December 10th, 2022
 """
 
 import json
+import os
 import docker
 from pymongo import MongoClient
 
@@ -20,22 +21,15 @@ class DB:
     A singleton class containing settings, Docker, and MongoDB connection info.
     """
     def __init__(self):
-        # Configurations -------------------------------------------------------
-        # MongoDB
-        uri = "mongodb+srv://pinebot.hzrfoqe.mongodb.net/?authSource=%24external&authMechanism=MONGODB-X509&retryWrites=true&w=majority"
-        self.mongo = MongoClient(uri,
-                     tls=True,
-                     tlsCertificateKeyFile='data/X509-cert-2940582018631408693.pem')
-        
-        # Docker
-        self.client = docker.from_env()
+        # Configurations
+        self.mongo = MongoClient(os.getenv("DATABASE_STRING")) # Initialize MongoDB
+        self.client = docker.from_env() # Initialize Docker
 
-        # Settings -------------------------------------------------------------
+        # Settings
         self.CHAT_LINK_TIME = 1
 
         self.load_role_whitelist()
         self.load_cogs()
-        # ----------------------------------------------------------------------
 
     def get_chat_link_time(self):
         return self.CHAT_LINK_TIME

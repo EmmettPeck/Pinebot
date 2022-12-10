@@ -13,6 +13,9 @@ services:
     # Timezone persistance
     - "/etc/timezone:/etc/timezone:ro" 
     - "/etc/localtime:/etc/localtime:ro"
+    environment:
+    - TOKEN=${TOKEN} # Bot Access Token
+    - DATABASE_STRING=${DATABASE_STRING} # Database connection address & pswd
     restart: always
   mc:
     image: itzg/minecraft-server:latest
@@ -24,7 +27,7 @@ services:
       
       # RCON (Required for sending commands)
       ENABLE_RCON: "true"
-      RCON_PASSWORD: "YOUR-PASSWORD-HERE"
+      RCON_PASSWORD: "${RCONPASS}"
       RCON_PORT: 25575
     volumes:
     - ~/${USER}/Pinebot/mc:/data
