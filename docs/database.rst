@@ -1,10 +1,7 @@
 Database Structure
 ==================
-
-Server configuration information is stored in the `Servers` collection.
-
-Server specific information is stored in the `<game-name>` collection.
-    
+* Server configuration information is stored in the `Servers` collection.
+* Server specific information is stored in the `<game-name>` collection.
     * IE: playtime, username, uuid
 
 .. code-block:: sh
@@ -45,10 +42,10 @@ Server specific information is stored in the `<game-name>` collection.
                 ]
 ...
 
-Notes for database reformatting:
-
-* Move player "statistics" dictionaries into list under Servers collection
-* Add archived flag
-* Move database access to ADT database class
-* Always work with database remote for horizontal scaling structure.
-* Remove neccesity of players knowing server-name. (let channel names work too)
+.. Note::
+    Notes for database reformatting:
+        * Move player "statistics" dictionaries into list under Servers collection
+        * Add archived flag
+        * Move database access to ADT database class
+        * Always work with database remote for horizontal scaling structure.
+        * Remove neccesity of players knowing server-name. (let channel names work too)

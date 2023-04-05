@@ -18,19 +18,17 @@ Sends a sanitized command to the server console. Only usable by server administr
 ~~~~~~~~~~~~
 Lists online players in a channel linked to a Minecraft server.
 
-Filter
-------
-
+Log Filter
+----------
 Type Detection
 ~~~~~~~~~~~~~~
 Pinebot uses context to detect the following message types:
-* Connection  (Join or Leave)
-* Achievement
-* Challenge
-* Death
-* Chat Message
-
+    * Connection  (Join or Leave)
+    * Achievement
+    * Challenge
+    * Death
+    * Chat Message
 Notes for filter improvement:
-* Multi-server type detection (Paper, Spigot, Forge, Vanilla)
-* Death message detection improvement (Currently searches long list)
-* Achievement & Challenge analytics
+    * Multi-server type detection (Paper, Spigot, Forge, Vanilla)
+    * Death message detection improvement (Currently searches long list)
+    * Achievement & Challenge analytics
