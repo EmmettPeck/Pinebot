@@ -1,11 +1,10 @@
 """
 Discord cog to handle analytics, including accessing of server playtime info.
 
-This module holds commands used by users to interface with information gathered
-by pinebot. Calls methods and provides conditions for multiple input conditions.
+This module holds commands to interface with information gathered by pinebot.
 
 Authors: Emmett Peck (EmmettPeck)
-Version: July 1st, 2022
+Version: April 5st, 2023
 """
 
 from datetime import datetime, timedelta
@@ -79,10 +78,7 @@ class Analytics(commands.Cog):
         """
         Prints playtime information to channel
         
-        Gets playtime for requesting user if no args provided, 
-        gathers playtime for referenced users. In linked server, searches for 
-        playtime of specific user. If server is provided, gathers playtime of 
-        username or matching UUID in that server. (Leverage getUUID)
+        Gets playtime for requesting user if no args provided, gathers playtime for referenced users. In linked server, searches for playtime of specific user. If server is provided, gathers playtime of username or matching UUID in that server. (Leverage getUUID)
         """
         logging.debug(f"Gathering playtime for {name} {server}")
         
@@ -98,9 +94,9 @@ class Analytics(commands.Cog):
         # If Server Not Provided (User from Linked Channel)
         elif server == None:
             # Attempt get servername from sent channel
-            
+                #TODO
             # If so, call function to send playtime from username & servername
-
+                #TODO
             # If not, unlinked channel or no server provided
             if not server:
                 # Tell user to use in linked channel, mention a user, or specify a servername
@@ -115,6 +111,7 @@ class Analytics(commands.Cog):
         # Get Playtime by Username & Server
         else: 
             # Call function to send playtime from username & servername
+            #TODO
             pass
 def setup(bot):
     """

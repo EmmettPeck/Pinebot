@@ -1,17 +1,20 @@
 """
 Module containing parent class for gamecog framework.
 
-This module is to be used with GameCog as a parent class for a gamespecific cog 
-implementation. Integrates a linked discord chat channel with game server chat
-channels hosted in a docker network with Pinebot. Provides a framework for 
-logging of in-game msgs, logging of playtime, keeping unique updated channel 
-headers, logging online players, and storing of player-specific data.
+This module is a baseclass for specific gamechild implementations.
+Bridges discord & game channels hosted in a network with Pinebot. 
 
-Contains loops, filters, and send commands for linking discord & game chat 
+Provides:
+- logging of in-game msgs, 
+- logging online players and playtime, 
+- keeping unique updated channel headers, 
+- handling of player-specific data.
+
+Contains loops, filters, and send commands for linking discord & game 
 channels using docker logs.
 
 Authors: Emmett Peck (EmmettPeck)
-Version: July 17th, 2022
+Version: April 5th, 2023
 """
 
 import asyncio
@@ -31,20 +34,11 @@ from dictionaries import get_msg_dict, make_statistics
 
 
 class Identifier(Enum):
-    """
-    Used for UUID/Username implementation, changing handling, sorting, and addition conditons based on information storage conditions
-
-    - Centralized UUIDs (Steam, Minecraft, etc) - On command/join get UUID, if UUID matches old UUID with different name change that name to the new name.
-    - Noncentralized UUID Unchangable Name - Search by name, save UUID when available.
-    - Noncentralized UUID Changable Name - Allows namechange command (with special condition that leverages UUID when available?)
-    - No UUID Unchangable Name - Search by name, no worries
-    - No UUID Changable Name -- Allows namechange command
-    """
     CENTRALIZED = 1
-    NONCENTRALIZED_UNCHANGABLE = 2
+    NONCENTRALIZED_UNCHANGABLE = 2  
     NONCENTRALIZED_CHANGABLE = 3
-    NO_UUID_UNCHANGABLE = 4
-    NO_UUID_CHANGABLE = 5
+    NO_UUID_UNCHANGABLE = 4         
+    NO_UUID_CHANGABLE = 5           
 
 class GameCog(commands.Cog):
     """
@@ -52,17 +46,10 @@ class GameCog(commands.Cog):
     a dockerized gameserver with chat-link using discord, discord commands that
     send commands to dockerized server, or log player activity & store player
     specific information.
-
-    Attributes
-    ---
-    `bot` : `discord.bot`
-        -- The current discord bot instance
-    `servers` - `list(Server)`
-        -- List of version matching servers
     """
 
     def __init__(self, bot):
-        self.bot = bot
+        self.bot = bot              # The current discord bot instance
         self.contexts=list()
         self.load_servers()
         self.read_messages.start()
@@ -85,13 +72,13 @@ class GameCog(commands.Cog):
 
     def get_uuid(self, server:dict, username:str, uuid=None) -> str:
         """
-        Returns: UUID of username if present, otherwise returns none.
-        
+        @Returns: UUID of username if present, else None.
+
         To be overloaded by GameCog children.     
         """
 
-        # Noncentralized_Nonchangable: Search for dict by Username, return matching uuid
-        if self.get_identifier() is Identifier.NONCENTRALIZED_UNCHANGABLE:
+        # Noncentralized: Search for dict by Username, return matching uuid
+        if self.get_identifier() in [2,3]:
             result = DB.mongo[self.class_name()][server['name']].find_one({'username':username})
             if result is None:
                 logging.debug(f'get_uuid found no matching user for {username}')
@@ -100,7 +87,7 @@ class GameCog(commands.Cog):
                 return result.get('uuid')
 
         # Centralized: Get uuid from name, search for matching uuid, update username if different
-        if self.get_identifier() is Identifier.CENTRALIZED:
+        elif self.get_identifier() is Identifier.CENTRALIZED:
             result = DB.mongo[self.class_name()][server['name']].find_one({'uuid':uuid})
             if result is None:
                 logging.debug(f'get_uuid found no matching uuid for {username}:{uuid}')
@@ -127,9 +114,6 @@ class GameCog(commands.Cog):
 
         For versions without a getlist function, returns None
         Called on cog init for each server
-
-        `server`: `dict`
-            -- dict to reference
         """
 
         pass
@@ -144,17 +128,10 @@ class GameCog(commands.Cog):
 
     def is_player_online(self, server:dict, playername:str = None) -> bool:
         """
-        Returns: True if playername matches element in online_player list
+        Returns: True if playername present in online_player list
 
         To be overloaded by GameCog children.
         Not certain, as not all games get online players on launch
-
-        Parameters:
-        ---
-        `server` : `dict`
-            -- Server to search in
-        `playername` : `str`
-            -- Playername to search online_players for
         """
         if playername:
             for player in server['online_players']:
@@ -172,16 +149,10 @@ class GameCog(commands.Cog):
 
         Sends Message To gameserver based on version implementation:
          - If no consolebased say command, does nothing.
-
-        Parameters:
-        ---
-        `server` : `dict`
-            -- Server to to reference
-        `message` : `str`
-            -- Message to format
         """
 
         logging.warning(f"{message} GameCog send_message not implemented.")
+        pass
 
     async def filter(self, server:dict, message:str):
         """
@@ -189,14 +160,6 @@ class GameCog(commands.Cog):
         Adds leaves/joins to connectqueue and messages to message queue.
         
         To be overloaded by GameCog Children
-
-        Parameters:
-        ---
-        `server` : `dict`
-            -- server to reference
-
-        `message` : `str`
-            -- Message string to filter using conditions
         """
         # Build Dictionary
         dict = get_msg_dict(
@@ -209,22 +172,15 @@ class GameCog(commands.Cog):
         # Messages are sent 
         if dict:
             msg_type = dict.get('type')
-            if msg_type == MessageType.JOIN or msg_type == MessageType.LEAVE:
-                await self.handle_connection(
-                    server=server,
-                    connection=dict,
-                )
+            if msg_type in [MessageType.JOIN, MessageType.LEAVE]: 
+                await self.handle_connection(server=server, connection=dict)
             await self.handle_message(message=dict)
         
 #---------------------------- Headers ------------------------------------------
     async def header_update(self,server:dict):
         """
-        Updates header with server playercount & docker status
-
-        Parameters:
-        ---
-        `server` : `dict`
-            -- Server object to update the linked channel header for
+        Updates header with server playercount & docker status.
+        Rate Limited.
         """
 
         # Check Docker Status (Running vs Not)
@@ -237,7 +193,6 @@ class GameCog(commands.Cog):
     
     async def update_channel_header(self, server:dict, container_status:str):
         """
-
         Uses implemented formatting to update linked channel heading.
 
         Contains formatting for channel_header, overload this to change.
@@ -275,14 +230,6 @@ class GameCog(commands.Cog):
         """
         Tails docker logs of server, sending output to filter().
         (Tail length defined in database.py)
-
-        Parameters:
-        ---
-        `server` : `dict`
-            -- The server to tail logs of
-
-        `ignore` : `bool`
-            -- Whether to print, log, and act on events
         """
         new_context = {'last':datetime.utcnow(), 'hashes':list(), 'name':server['name']}
         
@@ -290,7 +237,7 @@ class GameCog(commands.Cog):
         flag = False
         for c in self.contexts:
             try:
-                if c['name'] == server['name']:
+                if c['name'] is server['name']:
                     context = c
                     flag = True
                     break
@@ -337,17 +284,6 @@ class GameCog(commands.Cog):
         """
         Sends command to server, logging response if true
         Returns: Server response to command (str)
-
-        Parameters:
-        ---
-        `server`:`dict`:
-            - The server to send to
-
-        'command`:`str`
-            - The command to be sent
-        
-        `logging`:`bool`
-            - Bool to log command send and response
         """
         container = DB.client.containers.get(server['docker_name'])
 
@@ -370,17 +306,10 @@ class GameCog(commands.Cog):
     async def handle_message(self, server:dict, message:dict):
         """
         Empies message queue, sending messages to corresponding channels.
-
-
-        Parameters:
-        `server`:`dict`
-            - Server information dictionary 
-        `ctx`:``
-            - The channel corresponding to the server
         """
         accounts = self.bot.get_cog("Accounts")
 
-# Account Link TODO IMPROVE ACCESS QUANTITY (CURRENTLY ONCE PER MESSAGE) --> Reduce to only pull link_keys?
+        # TODO Break Out Account Link -- IMPROVE DATABASE ACCESS QUANTITY (CURRENTLY ONCE PER MESSAGE) --> Reduce to only pull link_keys?
         for key in DB.mongo['Servers'][self.class_name()].find({'_id':server['_id']}, {'link_keys'}):
             try:
                 t = datetime.utcnow().replace(tzinfo=timezone.utc)
@@ -425,9 +354,6 @@ class GameCog(commands.Cog):
         Adds modifications to playtime as appropriate
         Updates Header after a connect event
         Saves statistics after modifications
-
-        `server`:`dict`:
-            - server info dictionary to reference
         """
         
         # Event Type (Join/Leave)
@@ -438,8 +364,12 @@ class GameCog(commands.Cog):
         uuid = self.get_uuid(server=server, username=user)
         time = connection['time']
 
-        # Find Player
-        query = DB.mongo[self.class_name()][server['name']].find_one({'username':user, 'uuid':uuid})
+        # Find Player (UUID not used if None)
+        if uuid is None:
+            query = DB.mongo[self.class_name()][server['name']].find_one({'username':user})
+        else:
+            query = DB.mongo[self.class_name()][server['name']].find_one({'username':user, 'uuid':uuid})
+        
         if query is None:
             # Add Player
             DB.mongo[self.class_name()][server['name']].insert_one(make_statistics(username=user, uuid=uuid))
@@ -508,7 +438,4 @@ class GameCog(commands.Cog):
         
         for server in self.servers:
             if message.channel.id == server['cid']:
-                self.send_message(
-                    server=server, 
-                    message=msg
-                )
+                self.send_message(server=server, message=msg)
